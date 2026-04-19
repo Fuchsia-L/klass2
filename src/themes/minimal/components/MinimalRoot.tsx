@@ -2,14 +2,19 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import type { RouteName } from '../../types';
+import { LegacySettings } from '../../legacy/components/LegacySettings';
 
 export function MinimalRoot({ route }: { route: RouteName }) {
   const theme = useTheme();
-  const routeLabel: Record<RouteName, string> = {
+
+  if (route === 'settings') {
+    return <LegacySettings />;
+  }
+
+  const routeLabel: Record<Exclude<RouteName, 'settings'>, string> = {
     home: 'TODAY',
     matrix: 'MATRIX',
     rating: 'RATING',
-    settings: 'SETTINGS',
   };
 
   return (
