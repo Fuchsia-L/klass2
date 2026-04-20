@@ -11,6 +11,7 @@ import {
   importWhutArrangedList,
 } from '../../../features/schedule';
 import { WhutImportModal, WhutImportStatus } from '../../../features/schedule/import/WhutImportModal';
+import { legacyPackage } from '../../legacy/package';
 import type { MinimalPaletteColors, PaletteChoice } from './minimalTypes';
 import { MinPaletteCell } from './parts/MinPaletteCell';
 import { MinSettingsBlock } from './parts/MinSettingsBlock';
@@ -24,6 +25,7 @@ type Props = {
 };
 
 const RELATIVE_TIME_REFRESH_MS = 30_000;
+const MINIMAL_EXIT_THEME_ID = legacyPackage.palettes[0].id;
 
 function formatRelativeSyncTime(iso: string, now: number): string {
   const then = new Date(iso).getTime();
@@ -227,7 +229,7 @@ export function MinSettings({ p, paletteId, palettes }: Props) {
               <Text style={[styles.rowLabel, { color: p.subtle }]}>Current</Text>
               <Text style={[styles.rowValue, { color: p.ink }]}>Minimal</Text>
             </View>
-            <Pressable onPress={() => setThemeName('cyber')} style={[styles.outlineBtn, { borderColor: p.ink }]}>
+            <Pressable onPress={() => setThemeName(MINIMAL_EXIT_THEME_ID)} style={[styles.outlineBtn, { borderColor: p.ink }]}>
               <Text style={[styles.outlineText, { color: p.ink }]}>Change</Text>
             </Pressable>
           </View>
