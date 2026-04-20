@@ -38,8 +38,8 @@ function sameDay(event: Pick<MinimalEvent, 'start_time' | 'end_time'>, dayStart:
   return start < nextDayStart.getTime() && end > dayStart.getTime();
 }
 
-function withState(events: MinimalEvent[], nowMs: number): MinimalEvent[] {
-  const upcoming = events.find((event) => new Date(event.end_time).getTime() >= nowMs);
+export function withState(events: MinimalEvent[], nowMs: number): MinimalEvent[] {
+  const upcoming = events.find((event) => new Date(event.start_time).getTime() >= nowMs);
   return events.map((event) => {
     if (new Date(event.end_time).getTime() < nowMs) return { ...event, state: 'past' };
     if (upcoming?.id === event.id && upcoming.start_time === event.start_time) return { ...event, state: 'next' };
