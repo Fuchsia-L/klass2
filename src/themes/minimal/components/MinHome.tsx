@@ -1,10 +1,12 @@
 import React from 'react';
 import { LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from 'react-native';
+import type { TimeSlotRating } from '../../../features/rating/types';
 import type { TodoItem } from '../../../features/todo/types';
 import type { MinimalEvent, MinimalPaletteColors, RatingsByEventId } from './minimalTypes';
 import { formatTime } from './minimalTypes';
 import { MinNowLine } from './parts/MinNowLine';
 import { MinTimelineRow } from './parts/MinTimelineRow';
+import { MinTrends } from './parts/MinTrends';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -14,6 +16,7 @@ type Props = {
   p: MinimalPaletteColors;
   events: MinimalEvent[];
   todos: TodoItem[];
+  ratings: TimeSlotRating[];
   ratingsByEventId: RatingsByEventId;
   semesterWeek: number | null;
   nudgeEvent: MinimalEvent | null;
@@ -33,6 +36,7 @@ export function MinHome({
   p,
   events,
   todos,
+  ratings,
   ratingsByEventId,
   semesterWeek,
   nudgeEvent,
@@ -143,6 +147,7 @@ export function MinHome({
             />
           </React.Fragment>
         ))}
+        <MinTrends p={p} ratings={ratings} />
       </ScrollView>
     </View>
   );

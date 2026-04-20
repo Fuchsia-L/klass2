@@ -181,6 +181,7 @@ export function MinimalRoot({ route }: { route: RouteName }) {
           p={p}
           events={todayEvents}
           todos={todos}
+          ratings={ratingsApi.ratings}
           ratingsByEventId={ratingsByEventId}
           semesterWeek={semesterWeek}
           nudgeEvent={nudgeEvent}

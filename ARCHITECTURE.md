@@ -23,7 +23,8 @@ React Native + Expo (SDK 55, expo-router) app for schedule + time-slot rating wi
 - `palettes/{black,ghost,graphite,ink,paper,slate}.ts` — Palette color constants.
 - `components/MinimalRoot.tsx` — Container. Holds tab/sheet state; renders 4 tabs + modal sheets. Exports `withState(events, nowMs)` timeline classifier.
 - `components/MinimalRoot.test.tsx` — withState + route render tests.
-- `components/MinHome.tsx` — TODAY screen (timeline, nudge, todo/rating strips).
+- `components/MinHome.tsx` — TODAY screen (timeline, nudge, todo/rating strips, 7-day trends footer).
+- `components/MinHome.test.tsx` — Renders MinTrends section + bucketing smoke test.
 - `components/MinMatrix.tsx` — Weekly grid screen.
 - `components/MinTodos.tsx` — Todos list screen.
 - `components/MinSettings.tsx` — Settings + palette picker screen.
@@ -33,6 +34,8 @@ React Native + Expo (SDK 55, expo-router) app for schedule + time-slot rating wi
 - `components/minimalTypes.ts` — `MinimalEvent`, `MinimalPaletteColors`, `MinimalTab`, `MOOD_LABELS/FACES`, `categoryLabel`, `formatTime`, `formatDateDots`, `durationMinutes`, `moodToIndex`, `todoDueLabel`, `MINIMAL_COLORS_BY_ID`.
 - `components/parts/MinTimelineRow.tsx` — Single timeline row. Exports `softenCategoryColor(hex, alpha?)`.
 - `components/parts/MinTimelineRow.test.tsx` — Rail color + past-state opacity tests.
+- `components/parts/MinTrends.tsx` — 7-day rating trends footer. Exports `MinTrends`, `buildSevenDayTrendBuckets`, `MinTrendDay`. Uses `react-native-svg` for mood line/points.
+- `components/parts/MinTrends.test.tsx` — Bucketing + render tests (empty-day placeholder, mood polyline).
 - `components/parts/MinNowLine.tsx` — Pulsing NOW marker line.
 - `components/parts/MinPaletteCell.tsx` — Palette picker cell.
 - `components/parts/MinSettingsBlock.tsx` — Settings section wrapper.
@@ -107,8 +110,13 @@ React Native + Expo (SDK 55, expo-router) app for schedule + time-slot rating wi
 - `MinTimelineRow(props) → ReactNode`. Props: `event: MinimalEvent`, `p: MinimalPaletteColors`, `rating?: TimeSlotRating`, `onOpen: () => void`, `onRate: () => void`. Caller: `MinHome`.
 - `softenCategoryColor(hex: string | undefined, alpha?: number) → string`. Converts `#RRGGBB` to `rgba(r,g,b,alpha)`; falls back to `CATEGORIES['其他'].color` for invalid input. Default alpha `0.55`. Callers: MinTimelineRow, `MinTimelineRow.test.tsx`.
 
+### MinTrends (`src/themes/minimal/components/parts/MinTrends.tsx`)
+- `MinTrends(props) → ReactNode`. Props: `p: MinimalPaletteColors`, `ratings: TimeSlotRating[]`, `now?: Date`. Caller: `MinHome` (rendered at bottom of Today ScrollView).
+- `buildSevenDayTrendBuckets(ratings: TimeSlotRating[], now?: Date) → MinTrendDay[]`. Produces exactly 7 `MinTrendDay` entries (oldest → today) keyed by local-day boundaries via `created_at`; `efficiencyAverage` / `moodAverage` are `null` on empty days. Mood averages use `moodToIndex(rating.mood)` and skip `0` (unset). Callers: `MinTrends`, `MinTrends.test.tsx`.
+- `MinTrendDay { key: string; label: string; date: Date; count: number; efficiencyAverage: number|null; moodAverage: number|null }`.
+
 ### Other minimal parts (prop shapes)
-- `MinHome { p, events, todos, ratingsByEventId, semesterWeek, nudgeEvent?, nudgeText?, unratedCount, on* callbacks }`.
+- `MinHome { p, events, todos, ratings, ratingsByEventId, semesterWeek, nudgeEvent?, nudgeText?, unratedCount, on* callbacks }`. `ratings` feeds `MinTrends`.
 - `MinMatrix { p, events, weekStart, semesterWeek, weekOffset, onPrevWeek, onNextWeek, onOpenEvent, … }`.
 - `MinTodos { p, todos, onOpen, onToggle, onAdd }`.
 - `MinSettings { p, paletteId, palettes }`.
@@ -143,6 +151,9 @@ AsyncStorage → `loadEventsFromStorage` → `useEvents` (subscribes) → Minima
 ### Ratings (local ↔ cloud)
 `useRatings` → `RatingsService` (default local) → `RatingServiceProvider` rewires to `SyncingRatingRepository` at boot → local write triggers `SyncScheduler` → `CloudRatingApiClient` posts to `api.epoch0.org/v1/ratings` → foreground AppState change triggers refetch. `subscribeToRatingChanges` pushes updates to MinHome strip.
 
+### Ratings → Today trends footer
+`useRatings().ratings` → MinimalRoot passes `ratings` prop to MinHome → `MinTrends` → `buildSevenDayTrendBuckets(ratings, now)` buckets by local-day boundaries on `created_at`, averaging `efficiency` (1–5) and `moodToIndex(mood)` (1–5, skipping unset). Empty days render a 1px placeholder bar; mood polyline draws only when ≥2 populated days exist.
+
 ### Theme palette propagation
 `useThemeSettings` (AsyncStorage-backed) → `resolvePalette(themeName)` → `ThemePackage.renderRoot(route)` → MinimalRoot derives `p: MinimalPaletteColors` from `MINIMAL_COLORS_BY_ID[palette.id]` → passes `p` prop down (MinHome, MinTimelineRow, sheets, MinTabBar).
 
@@ -171,3 +182,4 @@ AsyncStorage → `loadEventsFromStorage` → `useEvents` (subscribes) → Minima
 
 - Phase 1: Matrix swipe-week scaffolding (P2 docs consolidation; no code changes here).
 - Phase 2: Minimal timeline rails now use `softenCategoryColor(CATEGORIES[event.category].color)` (rgba alpha 0.55) in `MinTimelineRow.tsx`; past-row `opacity: 0.5` stacks on top of the colored rail. Added `MinTimelineRow.test.tsx` covering helper + past-state rail rendering.
+- Phase 3: Added `MinTrends` (parts/MinTrends.tsx) + `buildSevenDayTrendBuckets`; rendered at bottom of Today ScrollView. MinHome gained a `ratings` prop sourced from `useRatings().ratings` in MinimalRoot. Mood line/points via `react-native-svg`; empty days show 1px placeholder, mood polyline drawn only with ≥2 populated days. Added `MinTrends.test.tsx` and `MinHome.test.tsx`.
