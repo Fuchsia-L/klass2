@@ -13,7 +13,11 @@ type Props = {
   events: MinimalEvent[];
   weekStart: Date;
   semesterWeek: number | null;
+  weekOffset: number;
   onOpenEvent: (eventId: string) => void;
+  onPrevWeek: () => void;
+  onNextWeek: () => void;
+  onResetWeek: () => void;
 };
 
 const DAYS = ['一', '二', '三', '四', '五', '六', '日'];
@@ -44,7 +48,7 @@ export function scrollMatrixToNow(scrollView: Pick<ScrollView, 'scrollTo'> | nul
   scrollView?.scrollTo({ y: Math.max(0, nowTop - 100), animated: false });
 }
 
-export function MinMatrix({ p, events, weekStart, semesterWeek, onOpenEvent }: Props) {
+export function MinMatrix({ p, events, weekStart, semesterWeek, weekOffset, onOpenEvent, onPrevWeek, onNextWeek, onResetWeek }: Props) {
   const opacity = usePulse();
   const scrollRef = React.useRef<ScrollView>(null);
   const [layoutReady, setLayoutReady] = React.useState(false);
@@ -68,8 +72,25 @@ export function MinMatrix({ p, events, weekStart, semesterWeek, onOpenEvent }: P
   return (
     <View style={[styles.container, { backgroundColor: p.bg }]}>
       <View style={[styles.header, { borderBottomColor: p.line }]}>
-        <Text style={[styles.kicker, { color: p.subtle }]}>Week {semesterWeek ?? '-'} · {rangeLabel}</Text>
-        <Text style={[styles.title, { color: p.ink }]}>Matrix</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerText}>
+            <Text style={[styles.kicker, { color: p.subtle }]}>Week {semesterWeek ?? '-'} · {rangeLabel}</Text>
+            <Text style={[styles.title, { color: p.ink }]}>Matrix</Text>
+          </View>
+          <View style={styles.nav}>
+            <Pressable onPress={onPrevWeek} testID="min-matrix-prev-week" style={styles.navBtn}>
+              <Text style={[styles.navChevron, { color: p.ink }]}>‹</Text>
+            </Pressable>
+            <Pressable onPress={onNextWeek} testID="min-matrix-next-week" style={styles.navBtn}>
+              <Text style={[styles.navChevron, { color: p.ink }]}>›</Text>
+            </Pressable>
+          </View>
+        </View>
+        {weekOffset !== 0 ? (
+          <Pressable onPress={onResetWeek} testID="min-matrix-reset-week" style={styles.resetBtn}>
+            <Text style={[styles.resetText, { color: p.subtle, borderColor: p.line }]}>← This week</Text>
+          </Pressable>
+        ) : null}
       </View>
       <View style={[styles.dayStrip, { borderBottomColor: p.line }, WEB_DAY_STRIP_STYLE]}>
         <View style={[styles.gutter, { borderRightColor: p.line }]} />
@@ -163,6 +184,13 @@ function MatrixBlock({ p, event, hero, onPress }: { p: MinimalPaletteColors; eve
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingTop: 24, paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  headerText: { flex: 1, minWidth: 0 },
+  nav: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingBottom: 2 },
+  navBtn: { paddingHorizontal: 10, paddingVertical: 4 },
+  navChevron: { fontSize: 24, lineHeight: 24, fontWeight: '400' },
+  resetBtn: { marginTop: 10, alignSelf: 'flex-start' },
+  resetText: { fontSize: 10, letterSpacing: 1.8, fontWeight: '700', textTransform: 'uppercase', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
   kicker: { fontSize: 10, letterSpacing: 2, fontWeight: '600', textTransform: 'uppercase' },
   title: { fontSize: 28, fontWeight: '600', marginTop: 6 },
   dayStrip: { flexDirection: 'row', borderBottomWidth: 1 },

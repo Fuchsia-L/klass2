@@ -85,6 +85,7 @@ export function MinimalRoot({ route }: { route: RouteName }) {
   const [ratingTargetId, setRatingTargetId] = React.useState<string | null>(null);
   const [dismissedNudgeId, setDismissedNudgeId] = React.useState<string | null>(null);
   const [todoSheetState, setTodoSheetState] = React.useState<TodoSheetState>(null);
+  const [weekOffset, setWeekOffset] = React.useState(0);
   const { events } = useEvents();
   const { todos } = useTodos();
   const ratingsApi = useRatings();
@@ -99,25 +100,34 @@ export function MinimalRoot({ route }: { route: RouteName }) {
   todayStart.setHours(0, 0, 0, 0);
   const tomorrowStart = new Date(todayStart);
   tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-  const weekStart = getWeekStart(now);
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 7);
+  const currentWeekStart = getWeekStart(now);
+  const currentWeekEnd = new Date(currentWeekStart);
+  currentWeekEnd.setDate(currentWeekStart.getDate() + 7);
+  const viewingWeekStart = new Date(currentWeekStart);
+  viewingWeekStart.setDate(currentWeekStart.getDate() + weekOffset * 7);
+  const viewingWeekEnd = new Date(viewingWeekStart);
+  viewingWeekEnd.setDate(viewingWeekStart.getDate() + 7);
 
-  const expandedWeekEvents = React.useMemo(
-    () => expandRepeatingEvents(events, weekStart, weekEnd).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()) as MinimalEvent[],
-    [events, weekStart.toDateString()],
+  const todayExpandedEvents = React.useMemo(
+    () => expandRepeatingEvents(events, currentWeekStart, currentWeekEnd).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()) as MinimalEvent[],
+    [events, currentWeekStart.toDateString()],
+  );
+
+  const viewingWeekExpanded = React.useMemo(
+    () => expandRepeatingEvents(events, viewingWeekStart, viewingWeekEnd).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()) as MinimalEvent[],
+    [events, viewingWeekStart.toDateString()],
   );
 
   const todayEvents = React.useMemo(
     () =>
       withState(
-        expandedWeekEvents.filter((event) => sameDay(event, todayStart, tomorrowStart)),
+        todayExpandedEvents.filter((event) => sameDay(event, todayStart, tomorrowStart)),
         now.getTime(),
       ),
-    [expandedWeekEvents, todayStart.toDateString(), now.getTime()],
+    [todayExpandedEvents, todayStart.toDateString(), now.getTime()],
   );
 
-  const matrixEvents = React.useMemo(() => withState(expandedWeekEvents, now.getTime()), [expandedWeekEvents, now.getTime()]);
+  const matrixEvents = React.useMemo(() => withState(viewingWeekExpanded, now.getTime()), [viewingWeekExpanded, now.getTime()]);
   const ratingsByEventId = React.useMemo(() => latestRatingsByEventId(ratingsApi.ratings), [ratingsApi.ratings]);
   const semesterWeek = semester ? getSemesterWeek(semester.start_date, now) : null;
 
@@ -133,8 +143,9 @@ export function MinimalRoot({ route }: { route: RouteName }) {
     [todayEvents, ratingsByEventId, todayStart.getTime(), tomorrowStart.getTime()],
   );
   const nudgeEvent = pastUnratedToday[0] && pastUnratedToday[0].id !== dismissedNudgeId ? pastUnratedToday[0] : null;
-  const selectedEvent = eventSheetId && eventSheetId !== 'new' ? matrixEvents.find((event) => event.id === eventSheetId) ?? null : null;
-  const ratingTarget = ratingTargetId ? matrixEvents.find((event) => event.id === ratingTargetId) ?? null : null;
+  const findEventById = (id: string): MinimalEvent | null => matrixEvents.find((event) => event.id === id) ?? todayEvents.find((event) => event.id === id) ?? null;
+  const selectedEvent = eventSheetId && eventSheetId !== 'new' ? findEventById(eventSheetId) : null;
+  const ratingTarget = ratingTargetId ? findEventById(ratingTargetId) : null;
   const existingRating = ratingTargetId ? ratingsByEventId[ratingTargetId] : undefined;
 
   const handleSaveRating = async ({ efficiency, moodIndex, reflection }: { efficiency: 1 | 2 | 3 | 4 | 5; moodIndex: 1 | 2 | 3 | 4 | 5; reflection: string }) => {
@@ -183,7 +194,22 @@ export function MinimalRoot({ route }: { route: RouteName }) {
         />
       ),
     },
-    { key: 'week', element: <MinMatrix p={p} events={matrixEvents} weekStart={weekStart} semesterWeek={semesterWeek} onOpenEvent={setEventSheetId} /> },
+    {
+      key: 'week',
+      element: (
+        <MinMatrix
+          p={p}
+          events={matrixEvents}
+          weekStart={viewingWeekStart}
+          semesterWeek={semester ? getSemesterWeek(semester.start_date, viewingWeekStart) : null}
+          weekOffset={weekOffset}
+          onPrevWeek={() => setWeekOffset((offset) => offset - 1)}
+          onNextWeek={() => setWeekOffset((offset) => offset + 1)}
+          onResetWeek={() => setWeekOffset(0)}
+          onOpenEvent={setEventSheetId}
+        />
+      ),
+    },
     {
       key: 'todos',
       element: (

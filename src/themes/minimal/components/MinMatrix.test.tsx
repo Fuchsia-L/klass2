@@ -39,7 +39,11 @@ describe('MinMatrix initial positioning', () => {
         events={[]}
         weekStart={new Date(2026, 3, 20, 0, 0, 0, 0)}
         semesterWeek={8}
+        weekOffset={0}
         onOpenEvent={jest.fn()}
+        onPrevWeek={jest.fn()}
+        onNextWeek={jest.fn()}
+        onResetWeek={jest.fn()}
       />,
     );
 
