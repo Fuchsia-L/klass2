@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { MinimalEvent, MinimalPaletteColors } from '../minimalTypes';
 import { categoryLabel, formatTime } from '../minimalTypes';
 import type { TimeSlotRating } from '../../../../features/rating/types';
+import { CATEGORIES } from '../../../../features/schedule/types';
 
 type Props = {
   event: MinimalEvent;
@@ -12,11 +13,26 @@ type Props = {
   onRate: () => void;
 };
 
+const RAIL_ALPHA = 0.55;
+
+export function softenCategoryColor(hex: string | undefined, alpha = RAIL_ALPHA): string {
+  const normalized = hex?.trim().replace(/^#/, '');
+  if (!normalized || !/^[0-9a-fA-F]{6}$/.test(normalized)) {
+    return softenCategoryColor(CATEGORIES['其他'].color, alpha);
+  }
+
+  const r = Number.parseInt(normalized.slice(0, 2), 16);
+  const g = Number.parseInt(normalized.slice(2, 4), 16);
+  const b = Number.parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export function MinTimelineRow({ event, p, rating, onOpen, onRate }: Props) {
   const isPast = event.state === 'past';
   const isNow = event.state === 'now';
   const textColor = isPast ? p.dim : p.ink;
   const metaColor = isPast ? p.dim : p.subtle;
+  const railColor = softenCategoryColor(CATEGORIES[event.category]?.color);
 
   return (
     <Pressable
@@ -37,7 +53,7 @@ export function MinTimelineRow({ event, p, rating, onOpen, onRate }: Props) {
         </Text>
         <Text style={[styles.end, { color: metaColor }]}>{formatTime(event.end_time)}</Text>
       </View>
-      <View style={[styles.rail, { backgroundColor: p.line, opacity: isPast ? 0.5 : 1 }]}>
+      <View testID="min-timeline-rail" style={[styles.rail, { backgroundColor: railColor, opacity: isPast ? 0.5 : 1 }]}>
         <View
           style={[
             styles.dot,
