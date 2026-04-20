@@ -108,6 +108,11 @@ export function MinMatrix({ p, events, weekStart, semesterWeek, weekOffset, onOp
             <Text style={[styles.title, { color: p.ink }]}>Matrix</Text>
           </View>
           <View style={styles.nav}>
+            {weekOffset !== 0 ? (
+              <Pressable onPress={onResetWeek} testID="min-matrix-reset-week" style={styles.resetBtn}>
+                <Text style={[styles.resetText, { color: p.subtle, borderColor: p.line }]}>← This week</Text>
+              </Pressable>
+            ) : null}
             <Pressable onPress={onPrevWeek} testID="min-matrix-prev-week" style={styles.navBtn}>
               <Text style={[styles.navChevron, { color: p.ink }]}>‹</Text>
             </Pressable>
@@ -116,11 +121,6 @@ export function MinMatrix({ p, events, weekStart, semesterWeek, weekOffset, onOp
             </Pressable>
           </View>
         </View>
-        {weekOffset !== 0 ? (
-          <Pressable onPress={onResetWeek} testID="min-matrix-reset-week" style={styles.resetBtn}>
-            <Text style={[styles.resetText, { color: p.subtle, borderColor: p.line }]}>← This week</Text>
-          </Pressable>
-        ) : null}
       </View>
       <View style={[styles.dayStrip, { borderBottomColor: p.line }, WEB_DAY_STRIP_STYLE]}>
         <View style={[styles.gutter, { borderRightColor: p.line }]} />
@@ -218,10 +218,10 @@ const styles = StyleSheet.create({
   header: { paddingTop: 24, paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1 },
   headerRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   headerText: { flex: 1, minWidth: 0 },
-  nav: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingBottom: 2 },
+  nav: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingBottom: 2 },
   navBtn: { paddingHorizontal: 10, paddingVertical: 4 },
   navChevron: { fontSize: 24, lineHeight: 24, fontWeight: '400' },
-  resetBtn: { marginTop: 10, alignSelf: 'flex-start' },
+  resetBtn: { marginRight: 4 },
   resetText: { fontSize: 10, letterSpacing: 1.8, fontWeight: '700', textTransform: 'uppercase', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 4 },
   kicker: { fontSize: 10, letterSpacing: 2, fontWeight: '600', textTransform: 'uppercase' },
   title: { fontSize: 28, fontWeight: '600', marginTop: 6 },

@@ -143,6 +143,11 @@ export function MinimalRoot({ route }: { route: RouteName }) {
     [todayEvents, ratingsByEventId, todayStart.getTime(), tomorrowStart.getTime()],
   );
   const nudgeEvent = pastUnratedToday[0] && pastUnratedToday[0].id !== dismissedNudgeId ? pastUnratedToday[0] : null;
+  const categoryByEventId = React.useMemo(() => {
+    const acc: Record<string, import('../../../features/schedule/types').CategoryKey> = {};
+    for (const event of events) acc[event.id] = event.category;
+    return acc;
+  }, [events]);
   const findEventById = (id: string): MinimalEvent | null => matrixEvents.find((event) => event.id === id) ?? todayEvents.find((event) => event.id === id) ?? null;
   const selectedEvent = eventSheetId && eventSheetId !== 'new' ? findEventById(eventSheetId) : null;
   const ratingTarget = ratingTargetId ? findEventById(ratingTargetId) : null;
@@ -183,6 +188,7 @@ export function MinimalRoot({ route }: { route: RouteName }) {
           todos={todos}
           ratings={ratingsApi.ratings}
           ratingsByEventId={ratingsByEventId}
+          categoryByEventId={categoryByEventId}
           semesterWeek={semesterWeek}
           nudgeEvent={nudgeEvent}
           nudgeText={nudgeCopy(nudgeEvent)}

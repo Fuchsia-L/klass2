@@ -1,6 +1,7 @@
 import React from 'react';
 import { LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from 'react-native';
 import type { TimeSlotRating } from '../../../features/rating/types';
+import type { CategoryKey } from '../../../features/schedule/types';
 import type { TodoItem } from '../../../features/todo/types';
 import type { MinimalEvent, MinimalPaletteColors, RatingsByEventId } from './minimalTypes';
 import { formatTime } from './minimalTypes';
@@ -18,6 +19,7 @@ type Props = {
   todos: TodoItem[];
   ratings: TimeSlotRating[];
   ratingsByEventId: RatingsByEventId;
+  categoryByEventId: Record<string, CategoryKey>;
   semesterWeek: number | null;
   nudgeEvent: MinimalEvent | null;
   nudgeText: string;
@@ -38,6 +40,7 @@ export function MinHome({
   todos,
   ratings,
   ratingsByEventId,
+  categoryByEventId,
   semesterWeek,
   nudgeEvent,
   nudgeText,
@@ -147,7 +150,7 @@ export function MinHome({
             />
           </React.Fragment>
         ))}
-        <MinTrends p={p} ratings={ratings} />
+        <MinTrends p={p} ratings={ratings} categoryByEventId={categoryByEventId} />
       </ScrollView>
     </View>
   );

@@ -58,6 +58,7 @@ describe('MinHome', () => {
         todos={[] as TodoItem[]}
         ratings={[rating]}
         ratingsByEventId={{ [event.id]: rating }}
+        categoryByEventId={{ [event.id]: event.category }}
         semesterWeek={8}
         nudgeEvent={null}
         nudgeText=""

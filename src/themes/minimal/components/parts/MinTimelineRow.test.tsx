@@ -1,9 +1,8 @@
 import React from 'react';
 import { render } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
-import { CATEGORIES } from '../../../../features/schedule/types';
 import type { MinimalEvent, MinimalPaletteColors } from '../minimalTypes';
-import { MinTimelineRow, softenCategoryColor } from './MinTimelineRow';
+import { MinTimelineRow } from './MinTimelineRow';
 
 const paletteColors: MinimalPaletteColors = {
   bg: '#ffffff',
@@ -36,20 +35,8 @@ function flattenRailStyle(style: unknown) {
   return StyleSheet.flatten(style) ?? {};
 }
 
-describe('softenCategoryColor', () => {
-  it('converts representative category hex colors to softened rgba', () => {
-    expect(softenCategoryColor(CATEGORIES['学习'].color)).toBe('rgba(0, 240, 255, 0.55)');
-    expect(softenCategoryColor(CATEGORIES['工作'].color)).toBe('rgba(168, 85, 247, 0.55)');
-  });
-
-  it('falls back to the OTHER category color for invalid input', () => {
-    expect(softenCategoryColor(undefined)).toBe('rgba(100, 116, 139, 0.55)');
-    expect(softenCategoryColor('not-a-color')).toBe('rgba(100, 116, 139, 0.55)');
-  });
-});
-
 describe('MinTimelineRow', () => {
-  it('renders a 1px category-colored rail for a study event', () => {
+  it('renders a 1px rail using the active palette line color', () => {
     const { getByTestId } = render(
       <MinTimelineRow event={createEvent({ category: '学习' })} p={paletteColors} onOpen={jest.fn()} onRate={jest.fn()} />,
     );
@@ -58,12 +45,12 @@ describe('MinTimelineRow', () => {
 
     expect(railStyle).toMatchObject({
       width: 1,
-      backgroundColor: 'rgba(0, 240, 255, 0.55)',
+      backgroundColor: paletteColors.line,
       opacity: 1,
     });
   });
 
-  it('keeps past row opacity on the category-colored rail', () => {
+  it('keeps past row opacity on the rail', () => {
     const { getByTestId } = render(
       <MinTimelineRow event={createEvent({ category: '工作', state: 'past' })} p={paletteColors} onOpen={jest.fn()} onRate={jest.fn()} />,
     );
@@ -72,7 +59,7 @@ describe('MinTimelineRow', () => {
 
     expect(railStyle).toMatchObject({
       width: 1,
-      backgroundColor: 'rgba(168, 85, 247, 0.55)',
+      backgroundColor: paletteColors.line,
       opacity: 0.5,
     });
   });

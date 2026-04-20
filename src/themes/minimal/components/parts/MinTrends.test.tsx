@@ -96,6 +96,7 @@ describe('MinTrends', () => {
       <MinTrends
         p={paletteColors}
         now={new Date(2026, 3, 20, 15, 30)}
+        categoryByEventId={{}}
         ratings={[
           makeRating('one', localIso(2026, 3, 18, 8), { efficiency: 2, mood: '躁' }),
           makeRating('two', localIso(2026, 3, 19, 8), { efficiency: 5, mood: '极' }),

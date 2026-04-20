@@ -2,6 +2,8 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import type { TimeSlotRating } from '../../../../features/rating/types';
+import type { CategoryKey } from '../../../../features/schedule/types';
+import { CATEGORIES } from '../../../../features/schedule/types';
 import type { MinimalPaletteColors } from '../minimalTypes';
 import { MOOD_LABELS, moodToIndex } from '../minimalTypes';
 
@@ -11,6 +13,14 @@ export type MinTrendDay = {
   date: Date;
   count: number;
   efficiencyAverage: number | null;
+  moodAverage: number | null;
+};
+
+export type MinCategoryTrend = {
+  key: CategoryKey;
+  label: string;
+  count: number;
+  efficiencyAverage: number;
   moodAverage: number | null;
 };
 
@@ -24,6 +34,7 @@ type Accumulator = {
 type Props = {
   p: MinimalPaletteColors;
   ratings: TimeSlotRating[];
+  categoryByEventId: Record<string, CategoryKey>;
   now?: Date;
 };
 
@@ -103,6 +114,52 @@ export function buildSevenDayTrendBuckets(ratings: TimeSlotRating[], now = new D
   });
 }
 
+export function buildCategoryTrends(
+  ratings: TimeSlotRating[],
+  categoryByEventId: Record<string, CategoryKey>,
+  now = new Date(),
+): MinCategoryTrend[] {
+  const todayStart = startOfLocalDay(now);
+  const firstDayStart = new Date(todayStart);
+  firstDayStart.setDate(todayStart.getDate() - (COLUMN_COUNT - 1));
+  const afterToday = new Date(todayStart);
+  afterToday.setDate(todayStart.getDate() + 1);
+
+  const totals = new Map<CategoryKey, Accumulator>();
+  ratings.forEach((rating) => {
+    const createdMs = new Date(rating.created_at).getTime();
+    if (Number.isNaN(createdMs) || createdMs < firstDayStart.getTime() || createdMs >= afterToday.getTime()) return;
+    if (!rating.linked_event_id) return;
+    const category = categoryByEventId[rating.linked_event_id];
+    if (!category) return;
+
+    const entry = totals.get(category) ?? {
+      efficiencyTotal: 0,
+      efficiencyCount: 0,
+      moodTotal: 0,
+      moodCount: 0,
+    };
+    entry.efficiencyTotal += rating.efficiency;
+    entry.efficiencyCount += 1;
+    const moodIndex = moodToIndex(rating.mood);
+    if (moodIndex > 0) {
+      entry.moodTotal += moodIndex;
+      entry.moodCount += 1;
+    }
+    totals.set(category, entry);
+  });
+
+  return Array.from(totals.entries())
+    .map(([key, entry]) => ({
+      key,
+      label: CATEGORIES[key].label,
+      count: entry.efficiencyCount,
+      efficiencyAverage: entry.efficiencyTotal / entry.efficiencyCount,
+      moodAverage: entry.moodCount > 0 ? entry.moodTotal / entry.moodCount : null,
+    }))
+    .sort((a, b) => b.count - a.count);
+}
+
 function moodY(value: number): number {
   const top = 8;
   const bottom = MOOD_HEIGHT - 16;
@@ -113,8 +170,12 @@ function moodX(index: number): number {
   return (index / (COLUMN_COUNT - 1)) * CHART_WIDTH;
 }
 
-export function MinTrends({ p, ratings, now }: Props) {
+export function MinTrends({ p, ratings, categoryByEventId, now }: Props) {
   const days = React.useMemo(() => buildSevenDayTrendBuckets(ratings, now), [ratings, now?.getTime()]);
+  const categoryTrends = React.useMemo(
+    () => buildCategoryTrends(ratings, categoryByEventId, now),
+    [ratings, categoryByEventId, now?.getTime()],
+  );
   const moodPoints = days
     .map((day, index) => (day.moodAverage === null ? null : { x: moodX(index), y: moodY(day.moodAverage), key: day.key }))
     .filter((point): point is { x: number; y: number; key: string } => point !== null);
@@ -176,6 +237,36 @@ export function MinTrends({ p, ratings, now }: Props) {
           </Svg>
         </View>
       </View>
+
+      {categoryTrends.length > 0 ? (
+        <View style={styles.categoryBlock} testID="min-trends-by-category">
+          <Text style={[styles.sectionTitle, { color: p.subtle }]}>BY CATEGORY</Text>
+          {categoryTrends.map((category) => (
+            <View key={category.key} style={styles.categoryRow} testID={`min-trends-category-${category.key}`}>
+              <Text style={[styles.categoryLabel, { color: p.ink }]} numberOfLines={1}>
+                {category.label}
+              </Text>
+              <View style={[styles.categoryBarTrack, { borderColor: p.line }]}>
+                <View
+                  style={[
+                    styles.categoryBarFill,
+                    { width: `${(category.efficiencyAverage / 5) * 100}%`, backgroundColor: p.ink },
+                  ]}
+                />
+              </View>
+              <Text style={[styles.categoryValue, { color: p.ink }]}>
+                {category.efficiencyAverage.toFixed(1)}
+              </Text>
+              <Text style={[styles.categoryMood, { color: p.subtle }]}>
+                {category.moodAverage !== null ? MOOD_LABELS[Math.max(0, Math.min(4, Math.round(category.moodAverage) - 1))] : '—'}
+              </Text>
+              <Text style={[styles.categoryCount, { color: p.subtle }]}>
+                ×{category.count}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -241,5 +332,48 @@ const styles = StyleSheet.create({
   moodChart: {
     flex: 1,
     minWidth: 0,
+  },
+  categoryBlock: {
+    marginTop: 22,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 6,
+  },
+  categoryLabel: {
+    width: 54,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  categoryBarTrack: {
+    flex: 1,
+    height: 8,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  categoryBarFill: {
+    height: '100%',
+  },
+  categoryValue: {
+    width: 26,
+    textAlign: 'right',
+    fontSize: 11,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  categoryMood: {
+    width: 14,
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  categoryCount: {
+    width: 24,
+    textAlign: 'right',
+    fontSize: 9,
+    fontVariant: ['tabular-nums'],
   },
 });
