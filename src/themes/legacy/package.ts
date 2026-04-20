@@ -45,6 +45,11 @@ function renderRoot(route: RouteName): ReactNode {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { LegacyRating } = require('./components/LegacyRating') as typeof import('./components/LegacyRating');
       return React.createElement(LegacyRating);
+    case 'todos':
+      // Legacy does not ship an independent todos route; keep callers on the home surface.
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { LegacyHome: LegacyTodosFallback } = require('./components/LegacyHome') as typeof import('./components/LegacyHome');
+      return React.createElement(LegacyTodosFallback);
     case 'settings':
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { LegacySettings } = require('./components/LegacySettings') as typeof import('./components/LegacySettings');

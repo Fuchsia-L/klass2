@@ -25,7 +25,7 @@ export interface ThemePalette extends ThemePaletteMeta {
   themeConfig: ThemeConfig;
 }
 
-export type RouteName = 'home' | 'matrix' | 'rating' | 'settings';
+export type RouteName = 'home' | 'matrix' | 'rating' | 'todos' | 'settings';
 
 export interface ThemePackage {
   /** Package id, e.g. 'legacy' or 'minimal' */
