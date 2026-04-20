@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Easing, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { TimeSlotRating } from '../../../features/rating/types';
 import type { MinimalEvent, MinimalPaletteColors } from './minimalTypes';
 import { MOOD_FACES, MOOD_LABELS, categoryLabel, formatTime, moodToIndex } from './minimalTypes';
@@ -18,6 +18,9 @@ type Props = {
   onClose: () => void;
   onSave: (payload: SavePayload) => void;
 };
+
+const MONO_FONT_FAMILY = Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' });
+const MOOD_FADE_MS = 160;
 
 export function MinRatingSheet({ p, event, existing, onClose, onSave }: Props) {
   const open = event !== null;
@@ -117,9 +120,7 @@ export function MinRatingSheet({ p, event, existing, onClose, onSave }: Props) {
                       },
                     ]}
                   >
-                    <Text style={[styles.moodFace, { color: selected ? p.bg : p.ink, fontSize: selected ? 12 : 16 }]}>
-                      {selected ? MOOD_FACES[index] : label}
-                    </Text>
+                    <MoodFaceLayer label={label} face={MOOD_FACES[index]} selected={selected} value={value} p={p} />
                     {selected ? <Text style={[styles.moodLabel, { color: p.bg }]}>{label}</Text> : null}
                   </Pressable>
                 );
@@ -165,6 +166,74 @@ export function MinRatingSheet({ p, event, existing, onClose, onSave }: Props) {
   );
 }
 
+function MoodFaceLayer({
+  label,
+  face,
+  selected,
+  value,
+  p,
+}: {
+  label: string;
+  face: string;
+  selected: boolean;
+  value: number;
+  p: MinimalPaletteColors;
+}) {
+  const characterOpacity = React.useRef(new Animated.Value(selected ? 0 : 1)).current;
+  const faceOpacity = React.useRef(new Animated.Value(selected ? 1 : 0)).current;
+
+  React.useEffect(() => {
+    Animated.parallel([
+      Animated.timing(characterOpacity, {
+        toValue: selected ? 0 : 1,
+        duration: MOOD_FADE_MS,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(faceOpacity, {
+        toValue: selected ? 1 : 0,
+        duration: MOOD_FADE_MS,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [characterOpacity, faceOpacity, selected]);
+
+  return (
+    <View style={styles.moodFaceStack}>
+      <Animated.Text
+        testID={`min-rating-mood-${value}-character`}
+        style={[
+          styles.moodFace,
+          styles.moodFaceLayer,
+          {
+            color: selected ? p.bg : p.ink,
+            fontSize: 16,
+            opacity: characterOpacity,
+          },
+        ]}
+      >
+        {label}
+      </Animated.Text>
+      <Animated.Text
+        testID={`min-rating-mood-${value}-face`}
+        style={[
+          styles.moodFace,
+          styles.moodFaceLayer,
+          {
+            color: selected ? p.bg : p.ink,
+            fontFamily: MONO_FONT_FAMILY,
+            fontSize: 12,
+            opacity: faceOpacity,
+          },
+        ]}
+      >
+        {face}
+      </Animated.Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   overlay: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 25 },
   scrim: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
@@ -180,7 +249,9 @@ const styles = StyleSheet.create({
   effBar: { width: '100%', borderWidth: 1 },
   moodGrid: { flexDirection: 'row', gap: 6, marginTop: 12 },
   moodCell: { flex: 1, height: 56, paddingHorizontal: 2, borderWidth: 1, alignItems: 'center', justifyContent: 'center', gap: 2, overflow: 'hidden' },
+  moodFaceStack: { width: '100%', height: 16, alignItems: 'center', justifyContent: 'center' },
   moodFace: { fontWeight: '500', lineHeight: 16 },
+  moodFaceLayer: { position: 'absolute', textAlign: 'center' },
   moodLabel: { fontSize: 9, letterSpacing: 1.8, fontWeight: '700', opacity: 0.7, textTransform: 'uppercase', lineHeight: 11 },
   reflectionLabel: { marginBottom: 10 },
   reflection: { minHeight: 72, borderWidth: 1, padding: 12, fontSize: 14, textAlignVertical: 'top' },

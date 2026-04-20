@@ -1,7 +1,9 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
+import { Animated, Platform, StyleSheet } from 'react-native';
 import type { TimeSlotRating } from '../../../features/rating/types';
 import type { MinimalEvent, MinimalPaletteColors } from './minimalTypes';
+import { MOOD_FACES } from './minimalTypes';
 import { MinRatingSheet } from './MinRatingSheet';
 
 const paletteColors: MinimalPaletteColors = {
@@ -141,3 +143,69 @@ describe('MinRatingSheet edit stability', () => {
     });
   });
 });
+
+describe('MinRatingSheet mood visual fidelity', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('uses monospace only for the selected kaomoji face layer', () => {
+    const { getByTestId } = render(
+      <MinRatingSheet
+        p={paletteColors}
+        event={makeEvent()}
+        existing={makeRating({ mood: '平' })}
+        onClose={jest.fn()}
+        onSave={jest.fn()}
+      />,
+    );
+
+    const selectedFaceStyle = flattenStyle(getByTestId('min-rating-mood-3-face').props.style);
+    const selectedCharacterStyle = flattenStyle(getByTestId('min-rating-mood-3-character').props.style);
+    const unselectedCharacterStyle = flattenStyle(getByTestId('min-rating-mood-4-character').props.style);
+
+    expect(selectedFaceStyle.fontFamily).toBe(Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }));
+    expect(selectedFaceStyle.fontSize).toBe(12);
+    expect(selectedCharacterStyle.fontFamily).toBeUndefined();
+    expect(unselectedCharacterStyle.fontFamily).toBeUndefined();
+    expect(unselectedCharacterStyle.fontSize).toBe(16);
+  });
+
+  it('renders both mood character and face layers with unselected character visible by default', () => {
+    const { getByTestId } = render(
+      <MinRatingSheet p={paletteColors} event={makeEvent()} onClose={jest.fn()} onSave={jest.fn()} />,
+    );
+
+    expect(getByTestId('min-rating-mood-3-character').props.children).toBe('平');
+    expect(getByTestId('min-rating-mood-3-face').props.children).toBe(MOOD_FACES[2]);
+    expect(readAnimatedValue(flattenStyle(getByTestId('min-rating-mood-3-character').props.style).opacity)).toBe(1);
+    expect(readAnimatedValue(flattenStyle(getByTestId('min-rating-mood-3-face').props.style).opacity)).toBe(0);
+  });
+
+  it('starts a 160ms Animated crossfade when selecting a mood', () => {
+    const timingSpy = jest.spyOn(Animated, 'timing');
+    const { getByTestId } = render(
+      <MinRatingSheet p={paletteColors} event={makeEvent()} onClose={jest.fn()} onSave={jest.fn()} />,
+    );
+    timingSpy.mockClear();
+
+    fireEvent.press(getByTestId('min-rating-mood-5'));
+
+    const moodFadeCalls = timingSpy.mock.calls.filter(([, config]) => config.duration === 160);
+    expect(moodFadeCalls).toHaveLength(2);
+    expect(moodFadeCalls.map(([, config]) => config.toValue).sort()).toEqual([0, 1]);
+    expect(moodFadeCalls.every(([, config]) => config.useNativeDriver === true)).toBe(true);
+  });
+});
+
+function flattenStyle(style: unknown): Record<string, any> {
+  return StyleSheet.flatten(style) as Record<string, any>;
+}
+
+function readAnimatedValue(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (value && typeof value === 'object' && '__getValue' in value && typeof value.__getValue === 'function') {
+    return value.__getValue();
+  }
+  throw new Error('Animated value is not readable in test');
+}
