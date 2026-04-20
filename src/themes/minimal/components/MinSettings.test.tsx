@@ -1,7 +1,10 @@
 import React from 'react';
+import { StyleSheet, View } from 'react-native';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { MinSettings } from './MinSettings';
-import type { MinimalPaletteColors } from './minimalTypes';
+import { MinPaletteCell } from './parts/MinPaletteCell';
+import type { MinimalPaletteColors, PaletteChoice } from './minimalTypes';
+import { minimalBlackPalette } from '../palettes/black';
 
 const mockSetThemeName = jest.fn();
 
@@ -72,6 +75,21 @@ const paletteColors: MinimalPaletteColors = {
   sheetScrim: 'rgba(0,0,0,0.2)',
 };
 
+function flattenStyle(style: unknown): Record<string, unknown> {
+  return (StyleSheet.flatten(style) ?? {}) as Record<string, unknown>;
+}
+
+function makePalette(overrides: Partial<PaletteChoice>): PaletteChoice {
+  return {
+    ...minimalBlackPalette,
+    ...overrides,
+    preview: {
+      ...minimalBlackPalette.preview,
+      ...overrides.preview,
+    },
+  };
+}
+
 describe('MinSettings theme exit', () => {
   beforeEach(() => {
     mockSetThemeName.mockClear();
@@ -94,5 +112,81 @@ describe('MinSettings theme exit', () => {
 
     expect(mockSetThemeName).toHaveBeenCalledWith('rename-safe-legacy-baseline');
     expect(mockSetThemeName).not.toHaveBeenCalledWith('cyber');
+  });
+});
+
+describe('MinPaletteCell palette colors', () => {
+  it('uses active palette colors for labels while swatches preview the candidate palette', () => {
+    const { getByText, UNSAFE_getAllByType } = render(
+      <MinPaletteCell
+        p={paletteColors}
+        palette={minimalBlackPalette}
+        selected={false}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(flattenStyle(getByText('Black').props.style)).toEqual(
+      expect.objectContaining({ color: paletteColors.ink }),
+    );
+    expect(flattenStyle(getByText('pure black on white').props.style)).toEqual(
+      expect.objectContaining({ color: paletteColors.subtle }),
+    );
+
+    const views = UNSAFE_getAllByType(View);
+    const swatch = views.find((view) => {
+      const style = flattenStyle(view.props.style);
+      return style.width === 36 && style.height === 36;
+    });
+    expect(flattenStyle(swatch?.props.style)).toEqual(
+      expect.objectContaining({
+        backgroundColor: '#ffffff',
+        borderColor: '#e5e5e5',
+      }),
+    );
+
+    const swatchChildren = swatch?.props.children as Array<React.ReactElement<{ style?: unknown }>>;
+    expect(flattenStyle(swatchChildren[0].props.style)).toEqual(
+      expect.objectContaining({ backgroundColor: '#ffffff' }),
+    );
+    expect(flattenStyle(swatchChildren[1].props.style)).toEqual(
+      expect.objectContaining({ backgroundColor: '#000000' }),
+    );
+  });
+
+  it('falls back to the active palette when the candidate palette id is unmapped', () => {
+    const unknownPalette = makePalette({
+      id: 'minimal-unmapped',
+      label: 'Minimal Mystery',
+      sub: 'unknown palette',
+    });
+
+    const { getByText, UNSAFE_getAllByType } = render(
+      <MinPaletteCell
+        p={paletteColors}
+        palette={unknownPalette}
+        selected
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(flattenStyle(getByText('Mystery').props.style)).toEqual(
+      expect.objectContaining({ color: paletteColors.ink }),
+    );
+    expect(flattenStyle(getByText('unknown palette').props.style)).toEqual(
+      expect.objectContaining({ color: paletteColors.subtle }),
+    );
+
+    const views = UNSAFE_getAllByType(View);
+    const swatch = views.find((view) => {
+      const style = flattenStyle(view.props.style);
+      return style.width === 36 && style.height === 36;
+    });
+    expect(flattenStyle(swatch?.props.style)).toEqual(
+      expect.objectContaining({
+        backgroundColor: paletteColors.bg,
+        borderColor: paletteColors.line,
+      }),
+    );
   });
 });
