@@ -165,7 +165,7 @@ describe('MinRatingSheet mood visual fidelity', () => {
     const unselectedCharacterStyle = flattenStyle(getByTestId('min-rating-mood-4-character').props.style);
 
     expect(selectedFaceStyle.fontFamily).toBe(Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }));
-    expect(selectedFaceStyle.fontSize).toBe(12);
+    expect(selectedFaceStyle.fontSize).toBe(11);
     expect(selectedCharacterStyle.fontFamily).toBeUndefined();
     expect(unselectedCharacterStyle.fontFamily).toBeUndefined();
     expect(unselectedCharacterStyle.fontSize).toBe(16);

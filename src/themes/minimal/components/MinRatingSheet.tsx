@@ -203,6 +203,7 @@ function MoodFaceLayer({
     <View style={styles.moodFaceStack}>
       <Animated.Text
         testID={`min-rating-mood-${value}-character`}
+        numberOfLines={1}
         style={[
           styles.moodFace,
           styles.moodFaceLayer,
@@ -217,13 +218,15 @@ function MoodFaceLayer({
       </Animated.Text>
       <Animated.Text
         testID={`min-rating-mood-${value}-face`}
+        numberOfLines={1}
+        adjustsFontSizeToFit
         style={[
           styles.moodFace,
           styles.moodFaceLayer,
           {
             color: selected ? p.bg : p.ink,
             fontFamily: MONO_FONT_FAMILY,
-            fontSize: 12,
+            fontSize: 11,
             opacity: faceOpacity,
           },
         ]}

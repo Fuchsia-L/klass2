@@ -56,6 +56,7 @@ export function MinEventSheet({ p, event, isNew, onClose }: Props) {
   const [draftStart, setDraftStart] = React.useState(() => formatEditableDateTime(defaultStart()));
   const [draftEnd, setDraftEnd] = React.useState(() => formatEditableDateTime(new Date(defaultStart().getTime() + 60 * 60000)));
   const [draftCategory, setDraftCategory] = React.useState<CategoryKey>('其他');
+  const [draftLocation, setDraftLocation] = React.useState('');
   const [error, setError] = React.useState('');
   const [saving, setSaving] = React.useState(false);
   const [confirmingDelete, setConfirmingDelete] = React.useState(false);
@@ -86,12 +87,14 @@ export function MinEventSheet({ p, event, isNew, onClose }: Props) {
       setDraftStart(formatEditableDateTime(new Date(event.start_time)));
       setDraftEnd(formatEditableDateTime(new Date(event.end_time)));
       setDraftCategory(event.category);
+      setDraftLocation(event.location ?? '');
     } else {
       const start = defaultStart();
       setDraftTitle('');
       setDraftStart(formatEditableDateTime(start));
       setDraftEnd(formatEditableDateTime(new Date(start.getTime() + 60 * 60000)));
       setDraftCategory('其他');
+      setDraftLocation('');
     }
     setError('');
     setSaving(false);
@@ -117,6 +120,7 @@ export function MinEventSheet({ p, event, isNew, onClose }: Props) {
       return;
     }
 
+    const location = draftLocation.trim() || undefined;
     try {
       setSaving(true);
       const result = isExisting && event
@@ -126,12 +130,14 @@ export function MinEventSheet({ p, event, isNew, onClose }: Props) {
             category: draftCategory,
             start_time: start.toISOString(),
             end_time: end.toISOString(),
+            location,
           })
         : await addEvent({
             title,
             category: draftCategory,
             start_time: start.toISOString(),
             end_time: end.toISOString(),
+            location,
             repeat: 'none',
             source: 'manual',
           });
@@ -216,6 +222,15 @@ export function MinEventSheet({ p, event, isNew, onClose }: Props) {
               value={draftEnd}
               onChangeText={setDraftEnd}
               placeholder="YYYY-MM-DD HH:mm"
+              placeholderTextColor={p.dim}
+              style={[styles.input, { color: p.ink, borderColor: p.line }]}
+            />
+            <Text style={[styles.fieldLabel, { color: p.subtle }]}>Location</Text>
+            <TextInput
+              testID="min-event-location-input"
+              value={draftLocation}
+              onChangeText={setDraftLocation}
+              placeholder="Optional"
               placeholderTextColor={p.dim}
               style={[styles.input, { color: p.ink, borderColor: p.line }]}
             />

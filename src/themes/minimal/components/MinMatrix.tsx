@@ -121,6 +121,11 @@ export function MinMatrix({ p, events, weekStart, semesterWeek, onOpenEvent }: P
 }
 
 function MatrixBlock({ p, event, hero, onPress }: { p: MinimalPaletteColors; event: MinimalEvent; hero: boolean; onPress: () => void }) {
+  const height = eventHeight(event);
+  // Heuristic: each title line ≈ 13px (lineHeight 13). Block needs ~26px (one title line + padding)
+  // before location can fit underneath at 9px line + 2px gap = ~37px gap budget.
+  const titleMaxLines = Math.max(1, Math.floor((height - 10) / 13));
+  const showLocation = !!event.location && height >= 38;
   return (
     <Pressable
       onPress={onPress}
@@ -128,16 +133,29 @@ function MatrixBlock({ p, event, hero, onPress }: { p: MinimalPaletteColors; eve
         styles.block,
         {
           top: eventTop(event),
-          height: eventHeight(event),
+          height,
           backgroundColor: hero ? p.ink : p.panel,
           borderColor: hero ? 'transparent' : p.line,
           transform: [{ scale: pressed ? 0.96 : 1 }],
         },
       ]}
     >
-      <Text style={[styles.blockText, { color: hero ? p.bg : p.ink }]} numberOfLines={2}>
+      <Text
+        style={[styles.blockText, { color: hero ? p.bg : p.ink }]}
+        numberOfLines={titleMaxLines}
+        ellipsizeMode="tail"
+      >
         {event.title}
       </Text>
+      {showLocation ? (
+        <Text
+          style={[styles.blockLoc, { color: hero ? p.bg : p.subtle, opacity: hero ? 0.7 : 1 }]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {event.location}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -160,7 +178,8 @@ const styles = StyleSheet.create({
   hourLine: { position: 'absolute', left: 0, right: 0, borderTopWidth: 1, borderStyle: 'dashed' },
   column: { flex: 1, position: 'relative' },
   block: { position: 'absolute', left: 2, right: 2, borderWidth: 1, paddingHorizontal: 6, paddingVertical: 5, overflow: 'hidden' },
-  blockText: { fontSize: 10, fontWeight: '600' },
+  blockText: { fontSize: 10, fontWeight: '600', lineHeight: 13 },
+  blockLoc: { fontSize: 9, fontWeight: '500', marginTop: 2, fontStyle: 'italic' },
   nowLine: { position: 'absolute', left: 0, right: 0, height: 1, zIndex: 3 },
   nowDot: { position: 'absolute', left: -4, top: -3, width: 7, height: 7 },
 });
