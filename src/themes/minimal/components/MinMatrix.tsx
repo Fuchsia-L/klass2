@@ -1,7 +1,12 @@
 import React from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { MinimalEvent, MinimalPaletteColors } from './minimalTypes';
 import { usePulse } from './parts/usePulse';
+
+// Web-only escape hatches (RN's StyleSheet types reject these but RN-Web passes them through to CSS).
+// dayStrip mirrors the grid's scrollbar gutter so day columns and grid columns align horizontally.
+const WEB_DAY_STRIP_STYLE: any = Platform.OS === 'web' ? { overflowY: 'auto', scrollbarGutter: 'stable' } : null;
+const WEB_GRID_SCROLL_STYLE: any = Platform.OS === 'web' ? { scrollbarGutter: 'stable' } : null;
 
 type Props = {
   p: MinimalPaletteColors;
@@ -66,7 +71,7 @@ export function MinMatrix({ p, events, weekStart, semesterWeek, onOpenEvent }: P
         <Text style={[styles.kicker, { color: p.subtle }]}>Week {semesterWeek ?? '-'} · {rangeLabel}</Text>
         <Text style={[styles.title, { color: p.ink }]}>Matrix</Text>
       </View>
-      <View style={[styles.dayStrip, { borderBottomColor: p.line }]}>
+      <View style={[styles.dayStrip, { borderBottomColor: p.line }, WEB_DAY_STRIP_STYLE]}>
         <View style={[styles.gutter, { borderRightColor: p.line }]} />
         {DAYS.map((day, index) => (
           <View
@@ -85,7 +90,7 @@ export function MinMatrix({ p, events, weekStart, semesterWeek, onOpenEvent }: P
           </View>
         ))}
       </View>
-      <ScrollView ref={scrollRef} testID="min-matrix-scroll" style={styles.gridScroll} onLayout={() => setLayoutReady(true)}>
+      <ScrollView ref={scrollRef} testID="min-matrix-scroll" style={[styles.gridScroll, WEB_GRID_SCROLL_STYLE]} onLayout={() => setLayoutReady(true)}>
         <View style={[styles.gridInner, { height: HOUR_HEIGHT * HOURS.length + 10 }]}>
           <View style={[styles.hourGutter, { borderRightColor: p.line }]}>
             {HOURS.map((hour, index) => (
@@ -101,7 +106,7 @@ export function MinMatrix({ p, events, weekStart, semesterWeek, onOpenEvent }: P
             {DAYS.map((day, index) => (
               <View key={day} style={[styles.column, { borderRightColor: p.line, borderRightWidth: index < 6 ? 1 : 0 }]}>
                 {events.filter((event) => weekDayIndex(event, weekStart) === index).map((event) => (
-                  <MatrixBlock key={event.id} p={p} event={event} hero={index === todayIndex && event.state === 'next'} onPress={() => onOpenEvent(event.id)} />
+                  <MatrixBlock key={event.id} p={p} event={event} hero={event.state === 'now'} onPress={() => onOpenEvent(event.id)} />
                 ))}
               </View>
             ))}

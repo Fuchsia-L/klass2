@@ -5,7 +5,7 @@ import { useEvents, useSemesterConfig } from '../../../features/schedule';
 import { expandRepeatingEvents } from '../../../features/schedule/domain/repeat';
 import { useRatings } from '../../../features/rating';
 import { useTodos } from '../../../features/todo';
-import { addTodo, deleteTodo, loadTodos, toggleTodoComplete, updateTodo } from '../../../features/todo/services/todo.service';
+import { toggleTodoComplete } from '../../../features/todo/services/todo.service';
 import type { TodoItem } from '../../../features/todo/types';
 import { getSemesterWeek, getWeekStart } from '../../../features/schedule/domain/calendar';
 import type { RouteName } from '../../types';
@@ -16,6 +16,7 @@ import { MinMatrix } from './MinMatrix';
 import { MinRatingSheet } from './MinRatingSheet';
 import { MinSettings } from './MinSettings';
 import { MinTodos } from './MinTodos';
+import { MinTodoSheet } from './MinTodoSheet';
 import {
   MINIMAL_COLORS_BY_ID,
   MOOD_LABELS,
@@ -24,6 +25,11 @@ import {
   RatingsByEventId,
 } from './minimalTypes';
 import { MinTabBar } from './parts/MinTabBar';
+
+type TodoSheetState =
+  | { mode: 'create' }
+  | { mode: 'edit'; todo: TodoItem }
+  | null;
 
 function routeToTab(route: RouteName): MinimalTab {
   if (route === 'matrix') return 'week';
@@ -39,9 +45,13 @@ function sameDay(event: Pick<MinimalEvent, 'start_time' | 'end_time'>, dayStart:
 }
 
 export function withState(events: MinimalEvent[], nowMs: number): MinimalEvent[] {
-  const upcoming = events.find((event) => new Date(event.start_time).getTime() >= nowMs);
+  // Strict > so an event whose start_time === now lands in 'now' (in progress), not 'next'.
+  const upcoming = events.find((event) => new Date(event.start_time).getTime() > nowMs);
   return events.map((event) => {
-    if (new Date(event.end_time).getTime() < nowMs) return { ...event, state: 'past' };
+    const start = new Date(event.start_time).getTime();
+    const end = new Date(event.end_time).getTime();
+    if (end < nowMs) return { ...event, state: 'past' };
+    if (start <= nowMs && nowMs < end) return { ...event, state: 'now' };
     if (upcoming?.id === event.id && upcoming.start_time === event.start_time) return { ...event, state: 'next' };
     return { ...event, state: 'upcoming' };
   });
@@ -66,11 +76,6 @@ function nudgeCopy(event: MinimalEvent | null): string {
   return `结束 ${Math.floor(diffMin / 60)} 小时前`;
 }
 
-function newestTodoId(todos: TodoItem[]): string | null {
-  const sorted = [...todos].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  return sorted[0]?.id ?? null;
-}
-
 export function MinimalRoot({ route }: { route: RouteName }) {
   const theme = useTheme();
   const { themeName } = useThemeSettings();
@@ -79,7 +84,7 @@ export function MinimalRoot({ route }: { route: RouteName }) {
   const [eventSheetId, setEventSheetId] = React.useState<string | 'new' | null>(null);
   const [ratingTargetId, setRatingTargetId] = React.useState<string | null>(null);
   const [dismissedNudgeId, setDismissedNudgeId] = React.useState<string | null>(null);
-  const [editingTodoId, setEditingTodoId] = React.useState<string | null>(null);
+  const [todoSheetState, setTodoSheetState] = React.useState<TodoSheetState>(null);
   const { events } = useEvents();
   const { todos } = useTodos();
   const ratingsApi = useRatings();
@@ -154,21 +159,8 @@ export function MinimalRoot({ route }: { route: RouteName }) {
     }
   };
 
-  const handleAddTodo = async () => {
-    await addTodo({ title: '', type: 'daily', priority: 'medium' });
-    const nextTodos = await loadTodos();
-    setEditingTodoId(newestTodoId(nextTodos));
-    setTab('todos');
-  };
-
-  const handleUpdateTodo = async (todo: TodoItem, patch: Partial<Pick<TodoItem, 'title' | 'notes'>>) => {
-    await updateTodo(todo.id, {
-      title: patch.title ?? todo.title,
-      type: todo.type,
-      priority: todo.priority,
-      notes: patch.notes ?? todo.notes,
-    });
-  };
+  const todoSheetIsNew = todoSheetState?.mode === 'create';
+  const todoSheetTodo = todoSheetState?.mode === 'edit' ? todoSheetState.todo : null;
 
   const screens: Array<{ key: MinimalTab; element: React.ReactNode }> = [
     {
@@ -198,11 +190,8 @@ export function MinimalRoot({ route }: { route: RouteName }) {
         <MinTodos
           p={p}
           todos={todos}
-          editingId={editingTodoId}
-          setEditingId={setEditingTodoId}
           onToggle={(id) => void toggleTodoComplete(id)}
-          onUpdate={(todo, patch) => void handleUpdateTodo(todo, patch)}
-          onDelete={(id) => void deleteTodo(id)}
+          onOpenTodo={(todo) => setTodoSheetState({ mode: 'edit', todo })}
         />
       ),
     },
@@ -218,9 +207,15 @@ export function MinimalRoot({ route }: { route: RouteName }) {
           </Screen>
         ))}
       </View>
-      <MinTabBar p={p} tab={tab} setTab={setTab} onAdd={() => (tab === 'todos' ? void handleAddTodo() : setEventSheetId('new'))} />
+      <MinTabBar
+        p={p}
+        tab={tab}
+        setTab={setTab}
+        onAdd={() => (tab === 'todos' ? setTodoSheetState({ mode: 'create' }) : setEventSheetId('new'))}
+      />
       <MinEventSheet p={p} event={selectedEvent} isNew={eventSheetId === 'new'} onClose={() => setEventSheetId(null)} />
       <MinRatingSheet p={p} event={ratingTarget} existing={existingRating} onClose={() => setRatingTargetId(null)} onSave={(payload) => void handleSaveRating(payload)} />
+      <MinTodoSheet p={p} todo={todoSheetTodo} isNew={todoSheetIsNew} onClose={() => setTodoSheetState(null)} />
     </View>
   );
 }

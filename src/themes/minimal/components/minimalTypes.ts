@@ -4,6 +4,7 @@ import type { TodoItem } from '../../../features/todo/types';
 import type { ThemePalette } from '../../types';
 import { MINIMAL_BLACK_COLORS } from '../palettes/black';
 import { MINIMAL_GHOST_COLORS } from '../palettes/ghost';
+import { MINIMAL_GRAPHITE_COLORS } from '../palettes/graphite';
 import { MINIMAL_INK_COLORS } from '../palettes/ink';
 import { MINIMAL_PAPER_COLORS } from '../palettes/paper';
 import { MINIMAL_SLATE_COLORS } from '../palettes/slate';
@@ -25,13 +26,14 @@ export type MinimalPaletteColors = {
 export const MINIMAL_COLORS_BY_ID: Record<string, MinimalPaletteColors> = {
   'minimal-black': MINIMAL_BLACK_COLORS,
   'minimal-ghost': MINIMAL_GHOST_COLORS,
+  'minimal-graphite': MINIMAL_GRAPHITE_COLORS,
   'minimal-ink': MINIMAL_INK_COLORS,
   'minimal-paper': MINIMAL_PAPER_COLORS,
   'minimal-slate': MINIMAL_SLATE_COLORS,
 };
 
 export type MinimalEvent = ScheduleEvent & {
-  state: 'past' | 'next' | 'upcoming';
+  state: 'past' | 'now' | 'next' | 'upcoming';
 };
 
 export type RatingsByEventId = Record<string, TimeSlotRating | undefined>;

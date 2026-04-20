@@ -2,14 +2,15 @@ import { getAllThemes, getTheme, THEME_OPTIONS } from './index';
 
 describe('theme registry', () => {
   it('exposes legacy themes plus the Minimal palette set', () => {
-    expect(Object.keys(getAllThemes())).toHaveLength(10);
-    expect(THEME_OPTIONS).toHaveLength(10);
+    expect(Object.keys(getAllThemes())).toHaveLength(11);
+    expect(THEME_OPTIONS).toHaveLength(11);
     expect(THEME_OPTIONS).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'hanami', label: 'Sakura 桜' }),
         expect.objectContaining({ name: 'ocean', label: 'Ocean' }),
         expect.objectContaining({ name: 'minimal-black', label: 'Minimal Black' }),
         expect.objectContaining({ name: 'minimal-ghost', label: 'Minimal Ghost' }),
+        expect.objectContaining({ name: 'minimal-graphite', label: 'Minimal Graphite' }),
       ]),
     );
 

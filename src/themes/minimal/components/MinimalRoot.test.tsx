@@ -15,7 +15,7 @@ function makeEvent(id: string, start_time: string, end_time: string): MinimalEve
 }
 
 describe('MinimalRoot withState', () => {
-  it('marks only the first event starting at or after now as next', () => {
+  it('marks running and start-at-now events as now; future as next', () => {
     const nowMs = new Date('2026-04-20T10:00:00.000Z').getTime();
 
     const events = [
@@ -27,13 +27,13 @@ describe('MinimalRoot withState', () => {
 
     expect(withState(events, nowMs).map((event) => [event.id, event.state])).toEqual([
       ['past', 'past'],
-      ['running', 'upcoming'],
-      ['starts-now', 'next'],
-      ['future', 'upcoming'],
+      ['running', 'now'],
+      ['starts-now', 'now'],
+      ['future', 'next'],
     ]);
   });
 
-  it('does not mark an ongoing event as next when the next start is in the future', () => {
+  it('marks an ongoing event as now and the next future as next', () => {
     const nowMs = new Date('2026-04-20T10:00:00.000Z').getTime();
 
     const events = [
@@ -42,12 +42,12 @@ describe('MinimalRoot withState', () => {
     ];
 
     expect(withState(events, nowMs).map((event) => [event.id, event.state])).toEqual([
-      ['running', 'upcoming'],
+      ['running', 'now'],
       ['future', 'next'],
     ]);
   });
 
-  it('keeps end-time-before-now as the past boundary', () => {
+  it('keeps end-time-before-now as past and end-time-equal-now as upcoming', () => {
     const nowMs = new Date('2026-04-20T10:00:00.000Z').getTime();
 
     const events = [

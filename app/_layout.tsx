@@ -5,16 +5,20 @@ import { useFonts } from 'expo-font';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Home, Grid3X3, Settings, Star } from 'lucide-react-native';
-import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
+import { ThemeProvider, useTheme, useThemeSettings } from '../src/theme/ThemeContext';
 import { RatingServiceProvider } from '../src/features/rating';
+import { resolvePalette } from '../src/themes';
 
 function TabLayout() {
   const theme = useTheme();
+  const { themeName } = useThemeSettings();
+  const isMinimal = resolvePalette(themeName)?.pkg.id === 'minimal';
 
   return (
     <>
       <StatusBar style="light" backgroundColor={theme.colors.bg} />
       <Tabs
+        tabBar={isMinimal ? () => null : undefined}
         screenOptions={{
           headerShown: false,
           tabBarStyle: {

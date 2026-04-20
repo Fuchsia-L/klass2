@@ -5,6 +5,7 @@ import { minimalInkPalette } from './palettes/ink';
 import { minimalSlatePalette } from './palettes/slate';
 import { minimalPaperPalette } from './palettes/paper';
 import { minimalGhostPalette } from './palettes/ghost';
+import { minimalGraphitePalette } from './palettes/graphite';
 import { MinimalRoot } from './components/MinimalRoot';
 
 export const minimalPackage: ThemePackage = {
@@ -16,6 +17,7 @@ export const minimalPackage: ThemePackage = {
     minimalSlatePalette,
     minimalPaperPalette,
     minimalGhostPalette,
+    minimalGraphitePalette,
   ],
   renderRoot(route: RouteName) {
     return React.createElement(MinimalRoot, { route });

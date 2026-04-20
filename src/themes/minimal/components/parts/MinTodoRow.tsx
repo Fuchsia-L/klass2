@@ -1,56 +1,59 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import type { TodoItem } from '../../../../features/todo/types';
-import type { MinimalPaletteColors, MinimalTodoPatch } from '../minimalTypes';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import type { Priority, TodoItem } from '../../../../features/todo/types';
+import type { MinimalPaletteColors } from '../minimalTypes';
 import { todoDueLabel } from '../minimalTypes';
 
 type Props = {
   p: MinimalPaletteColors;
   todo: TodoItem;
-  editing: boolean;
   onToggle: () => void;
-  onEdit: () => void;
-  onCommit: () => void;
-  onChange: (patch: MinimalTodoPatch) => void;
-  onDelete: () => void;
+  onOpen: () => void;
 };
 
-export function MinTodoRow({ p, todo, editing, onToggle, onEdit, onCommit, onChange, onDelete }: Props) {
+const PRIORITY_GLYPH: Record<Priority, string> = {
+  high: '●',
+  medium: '◐',
+  low: '○',
+};
+
+export function MinTodoRow({ p, todo, onToggle, onOpen }: Props) {
   return (
-    <View style={[styles.row, { borderBottomColor: p.line, opacity: todo.is_completed ? 0.45 : 1 }]}>
+    <Pressable
+      onPress={onOpen}
+      style={({ pressed }) => [
+        styles.row,
+        {
+          borderBottomColor: p.line,
+          opacity: todo.is_completed ? 0.45 : 1,
+          backgroundColor: pressed ? p.panel : 'transparent',
+        },
+      ]}
+    >
       <Pressable
-        onPress={onToggle}
+        onPress={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
         style={[styles.checkbox, { borderColor: p.ink, backgroundColor: todo.is_completed ? p.ink : 'transparent' }]}
       >
         <Text style={[styles.check, { color: p.bg }]}>{todo.is_completed ? '✓' : ''}</Text>
       </Pressable>
-      <Pressable style={styles.body} onPress={editing ? undefined : onEdit}>
-        {editing ? (
-          <TextInput
-            autoFocus
-            value={todo.title}
-            onBlur={onCommit}
-            onChangeText={(title) => onChange({ title })}
-            onSubmitEditing={onCommit}
-            placeholder="新待办..."
-            placeholderTextColor={p.dim}
-            style={[styles.input, { color: p.ink, borderBottomColor: p.ink }]}
-          />
-        ) : (
-          <Text
-            style={[
-              styles.title,
-              {
-                color: todo.title ? p.ink : p.dim,
-                fontStyle: todo.title ? 'normal' : 'italic',
-                textDecorationLine: todo.is_completed ? 'line-through' : 'none',
-              },
-            ]}
-            numberOfLines={1}
-          >
-            {todo.title || '无标题'}
-          </Text>
-        )}
+      <Text style={[styles.priority, { color: p.ink }]}>{PRIORITY_GLYPH[todo.priority]}</Text>
+      <View style={styles.body}>
+        <Text
+          style={[
+            styles.title,
+            {
+              color: todo.title ? p.ink : p.dim,
+              fontStyle: todo.title ? 'normal' : 'italic',
+              textDecorationLine: todo.is_completed ? 'line-through' : 'none',
+            },
+          ]}
+          numberOfLines={1}
+        >
+          {todo.title || '无标题'}
+        </Text>
         <View style={styles.metaRow}>
           <Text style={[styles.due, { color: p.subtle }]}>{todoDueLabel(todo)}</Text>
           {todo.notes ? (
@@ -62,11 +65,8 @@ export function MinTodoRow({ p, todo, editing, onToggle, onEdit, onCommit, onCha
             </>
           ) : null}
         </View>
-      </Pressable>
-      <Pressable onPress={onDelete} style={styles.delete}>
-        <Text style={[styles.deleteText, { color: p.dim }]}>×</Text>
-      </Pressable>
-    </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -77,6 +77,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     borderBottomWidth: 1,
+    alignItems: 'flex-start',
   },
   checkbox: {
     width: 16,
@@ -91,6 +92,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 13,
   },
+  priority: {
+    fontSize: 12,
+    lineHeight: 18,
+    width: 12,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
   body: {
     flex: 1,
     minWidth: 0,
@@ -98,14 +106,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: '500',
-  },
-  input: {
-    fontSize: 15,
-    fontWeight: '500',
-    width: '100%',
-    borderBottomWidth: 1,
-    paddingBottom: 3,
-    paddingTop: 0,
   },
   metaRow: {
     flexDirection: 'row',
@@ -126,12 +126,5 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11,
     fontStyle: 'italic',
-  },
-  delete: {
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-  },
-  deleteText: {
-    fontSize: 12,
   },
 });

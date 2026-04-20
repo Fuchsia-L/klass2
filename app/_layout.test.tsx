@@ -70,6 +70,7 @@ jest.mock('../src/theme/ThemeContext', () => ({
       heading: 'Orbitron-Bold',
     },
   }),
+  useThemeSettings: () => ({ themeName: 'cyber', setThemeName: () => undefined }),
 }));
 
 describe('RootLayout tabs', () => {

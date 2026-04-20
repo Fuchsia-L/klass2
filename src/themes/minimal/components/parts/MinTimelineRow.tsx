@@ -14,7 +14,7 @@ type Props = {
 
 export function MinTimelineRow({ event, p, rating, onOpen, onRate }: Props) {
   const isPast = event.state === 'past';
-  const isNext = event.state === 'next';
+  const isNow = event.state === 'now';
   const textColor = isPast ? p.dim : p.ink;
   const metaColor = isPast ? p.dim : p.subtle;
 
@@ -42,7 +42,7 @@ export function MinTimelineRow({ event, p, rating, onOpen, onRate }: Props) {
           style={[
             styles.dot,
             {
-              backgroundColor: isNext ? p.ink : isPast ? 'transparent' : p.bg,
+              backgroundColor: isNow ? p.ink : isPast ? 'transparent' : p.bg,
               borderColor: isPast ? p.line : p.ink,
             },
           ]}
@@ -54,7 +54,7 @@ export function MinTimelineRow({ event, p, rating, onOpen, onRate }: Props) {
             styles.title,
             {
               color: textColor,
-              fontWeight: isNext ? '600' : '500',
+              fontWeight: isNow ? '600' : '500',
               textDecorationLine: isPast ? 'line-through' : 'none',
               textDecorationColor: p.dim,
             },
