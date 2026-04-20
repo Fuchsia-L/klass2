@@ -32,7 +32,7 @@ export function MinRatingSheet({ p, event, existing, onClose, onSave }: Props) {
       setMood(moodToIndex(existing?.mood));
       setReflection(existing?.reflection ?? '');
     }
-  }, [open, existing?.id, existing?.efficiency, existing?.mood, existing?.reflection]);
+  }, [open, event?.id]);
 
   React.useEffect(() => {
     Animated.timing(translateY, {
@@ -74,7 +74,12 @@ export function MinRatingSheet({ p, event, existing, onClose, onSave }: Props) {
             </View>
             <View style={styles.effBars}>
               {[1, 2, 3, 4, 5].map((value) => (
-                <Pressable key={value} onPress={() => setEfficiency(value)} style={styles.effTap}>
+                <Pressable
+                  key={value}
+                  onPress={() => setEfficiency(value)}
+                  style={styles.effTap}
+                  testID={`min-rating-efficiency-${value}`}
+                >
                   <View
                     style={[
                       styles.effBar,
@@ -103,6 +108,7 @@ export function MinRatingSheet({ p, event, existing, onClose, onSave }: Props) {
                   <Pressable
                     key={label}
                     onPress={() => setMood(value)}
+                    testID={`min-rating-mood-${value}`}
                     style={[
                       styles.moodCell,
                       {
@@ -126,6 +132,7 @@ export function MinRatingSheet({ p, event, existing, onClose, onSave }: Props) {
             <TextInput
               multiline
               numberOfLines={4}
+              testID="min-rating-reflection"
               value={reflection}
               onChangeText={setReflection}
               placeholder="一两行就够..."
