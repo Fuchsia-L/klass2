@@ -35,8 +35,14 @@ function weekDayIndex(event: MinimalEvent, weekStart: Date): number {
   return Math.floor((day.getTime() - weekStart.getTime()) / 86400000);
 }
 
+export function scrollMatrixToNow(scrollView: Pick<ScrollView, 'scrollTo'> | null, nowTop: number): void {
+  scrollView?.scrollTo({ y: Math.max(0, nowTop - 100), animated: false });
+}
+
 export function MinMatrix({ p, events, weekStart, semesterWeek, onOpenEvent }: Props) {
   const opacity = usePulse();
+  const scrollRef = React.useRef<ScrollView>(null);
+  const [layoutReady, setLayoutReady] = React.useState(false);
   const now = new Date();
   const todayIndex = Math.min(6, Math.max(0, Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - weekStart.getTime()) / 86400000)));
   const nowTop = Math.max(0, (now.getHours() - START_HOUR) * HOUR_HEIGHT + (now.getMinutes() / 60) * HOUR_HEIGHT);
@@ -48,6 +54,11 @@ export function MinMatrix({ p, events, weekStart, semesterWeek, onOpenEvent }: P
   const weekEndLabel = new Date(weekStart);
   weekEndLabel.setDate(weekStart.getDate() + 6);
   const rangeLabel = `${weekStart.getMonth() + 1}/${weekStart.getDate()} – ${weekEndLabel.getMonth() + 1}/${weekEndLabel.getDate()}`;
+
+  React.useEffect(() => {
+    if (!layoutReady) return;
+    scrollMatrixToNow(scrollRef.current, nowTop);
+  }, [layoutReady, nowTop, events.length, weekStart.getTime()]);
 
   return (
     <View style={[styles.container, { backgroundColor: p.bg }]}>
@@ -74,7 +85,7 @@ export function MinMatrix({ p, events, weekStart, semesterWeek, onOpenEvent }: P
           </View>
         ))}
       </View>
-      <ScrollView style={styles.gridScroll} contentOffset={{ x: 0, y: Math.max(0, nowTop - 100) }}>
+      <ScrollView ref={scrollRef} testID="min-matrix-scroll" style={styles.gridScroll} onLayout={() => setLayoutReady(true)}>
         <View style={[styles.gridInner, { height: HOUR_HEIGHT * HOURS.length + 10 }]}>
           <View style={[styles.hourGutter, { borderRightColor: p.line }]}>
             {HOURS.map((hour, index) => (
