@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { MinimalEvent, MinimalPaletteColors } from './minimalTypes';
 import { usePulse } from './parts/usePulse';
 
@@ -48,10 +48,40 @@ export function scrollMatrixToNow(scrollView: Pick<ScrollView, 'scrollTo'> | nul
   scrollView?.scrollTo({ y: Math.max(0, nowTop - 100), animated: false });
 }
 
+export function isMatrixWeekSwipe(dx: number, dy: number): boolean {
+  return Math.abs(dx) > 50 && Math.abs(dy) < 30;
+}
+
+export function triggerMatrixWeekSwipeNavigation(dx: number, dy: number, onPrevWeek: () => void, onNextWeek: () => void): boolean {
+  if (!isMatrixWeekSwipe(dx, dy)) {
+    return false;
+  }
+
+  if (dx < 0) {
+    onNextWeek();
+  } else {
+    onPrevWeek();
+  }
+
+  return true;
+}
+
 export function MinMatrix({ p, events, weekStart, semesterWeek, weekOffset, onOpenEvent, onPrevWeek, onNextWeek, onResetWeek }: Props) {
   const opacity = usePulse();
   const scrollRef = React.useRef<ScrollView>(null);
   const [layoutReady, setLayoutReady] = React.useState(false);
+  const panResponder = React.useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) => isMatrixWeekSwipe(gestureState.dx, gestureState.dy),
+        onMoveShouldSetPanResponderCapture: (_, gestureState) => isMatrixWeekSwipe(gestureState.dx, gestureState.dy),
+        onPanResponderRelease: (_, gestureState) => {
+          triggerMatrixWeekSwipeNavigation(gestureState.dx, gestureState.dy, onPrevWeek, onNextWeek);
+        },
+        onPanResponderTerminationRequest: () => true,
+      }),
+    [onNextWeek, onPrevWeek],
+  );
   const now = new Date();
   const todayIndex = Math.min(6, Math.max(0, Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - weekStart.getTime()) / 86400000)));
   const nowTop = Math.max(0, (now.getHours() - START_HOUR) * HOUR_HEIGHT + (now.getMinutes() / 60) * HOUR_HEIGHT);
@@ -111,32 +141,34 @@ export function MinMatrix({ p, events, weekStart, semesterWeek, weekOffset, onOp
           </View>
         ))}
       </View>
-      <ScrollView ref={scrollRef} testID="min-matrix-scroll" style={[styles.gridScroll, WEB_GRID_SCROLL_STYLE]} onLayout={() => setLayoutReady(true)}>
-        <View style={[styles.gridInner, { height: HOUR_HEIGHT * HOURS.length + 10 }]}>
-          <View style={[styles.hourGutter, { borderRightColor: p.line }]}>
-            {HOURS.map((hour, index) => (
-              <Text key={hour} style={[styles.hourText, { top: index * HOUR_HEIGHT - 7, color: p.subtle, backgroundColor: p.bg }]}>
-                {String(hour).padStart(2, '0')}
-              </Text>
-            ))}
+      <View style={styles.matrixTouchArea} {...panResponder.panHandlers}>
+        <ScrollView ref={scrollRef} testID="min-matrix-scroll" style={[styles.gridScroll, WEB_GRID_SCROLL_STYLE]} onLayout={() => setLayoutReady(true)}>
+          <View style={[styles.gridInner, { height: HOUR_HEIGHT * HOURS.length + 10 }]}>
+            <View style={[styles.hourGutter, { borderRightColor: p.line }]}>
+              {HOURS.map((hour, index) => (
+                <Text key={hour} style={[styles.hourText, { top: index * HOUR_HEIGHT - 7, color: p.subtle, backgroundColor: p.bg }]}>
+                  {String(hour).padStart(2, '0')}
+                </Text>
+              ))}
+            </View>
+            <View style={styles.columns}>
+              {HOURS.map((_, index) => (
+                <View key={index} pointerEvents="none" style={[styles.hourLine, { top: index * HOUR_HEIGHT, borderTopColor: p.line, opacity: index === 0 ? 0.9 : 0.6 }]} />
+              ))}
+              {DAYS.map((day, index) => (
+                <View key={day} style={[styles.column, { borderRightColor: p.line, borderRightWidth: index < 6 ? 1 : 0 }]}>
+                  {events.filter((event) => weekDayIndex(event, weekStart) === index).map((event) => (
+                    <MatrixBlock key={event.id} p={p} event={event} hero={event.state === 'now'} onPress={() => onOpenEvent(event.id)} />
+                  ))}
+                </View>
+              ))}
+              <Animated.View pointerEvents="none" style={[styles.nowLine, { top: nowTop, backgroundColor: p.nowLine, opacity }]}>
+                <View style={[styles.nowDot, { backgroundColor: p.nowLine }]} />
+              </Animated.View>
+            </View>
           </View>
-          <View style={styles.columns}>
-            {HOURS.map((_, index) => (
-              <View key={index} pointerEvents="none" style={[styles.hourLine, { top: index * HOUR_HEIGHT, borderTopColor: p.line, opacity: index === 0 ? 0.9 : 0.6 }]} />
-            ))}
-            {DAYS.map((day, index) => (
-              <View key={day} style={[styles.column, { borderRightColor: p.line, borderRightWidth: index < 6 ? 1 : 0 }]}>
-                {events.filter((event) => weekDayIndex(event, weekStart) === index).map((event) => (
-                  <MatrixBlock key={event.id} p={p} event={event} hero={event.state === 'now'} onPress={() => onOpenEvent(event.id)} />
-                ))}
-              </View>
-            ))}
-            <Animated.View pointerEvents="none" style={[styles.nowLine, { top: nowTop, backgroundColor: p.nowLine, opacity }]}>
-              <View style={[styles.nowDot, { backgroundColor: p.nowLine }]} />
-            </Animated.View>
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -198,6 +230,7 @@ const styles = StyleSheet.create({
   dayCell: { flex: 1, alignItems: 'center', paddingVertical: 10 },
   dayName: { fontSize: 10, opacity: 0.6, fontWeight: '500' },
   dayNum: { fontSize: 14, fontWeight: '600', marginTop: 2, fontVariant: ['tabular-nums'] },
+  matrixTouchArea: { flex: 1 },
   gridScroll: { flex: 1 },
   gridInner: { position: 'relative', paddingTop: 10, flexDirection: 'row' },
   hourGutter: { width: 36, borderRightWidth: 1, position: 'relative' },
