@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { useTheme, useThemeSettings } from '../../../theme/ThemeContext';
 import { useEvents, useSemesterConfig } from '../../../features/schedule';
 import { useRatings } from '../../../features/rating';
@@ -8,6 +8,7 @@ import { starlightPackage } from '../package';
 import { STARLIGHT_NEBULA_COLORS } from '../palettes/nebula';
 import { StarlightRoot } from './StarlightRoot';
 import type { RouteName } from '../../types';
+import type { ScheduleEvent } from '../../../features/schedule/types';
 
 jest.mock('../../../theme/ThemeContext', () => ({
   useTheme: jest.fn(),
@@ -86,6 +87,10 @@ beforeEach(() => {
   mockUseTodos.mockReturnValue({ todos: [], loading: false, refresh: jest.fn() });
 });
 
+afterEach(() => {
+  jest.useRealTimers();
+});
+
 describe('StarlightRoot route mapping', () => {
   it.each([
     ['home', 'today'],
@@ -135,5 +140,60 @@ describe('StarlightRoot tab and sheet state', () => {
     fireEvent.press(result.getByTestId('starlight-tab-add'));
 
     expect(result.getByTestId('starlight-todo-sheet')).toBeTruthy();
+  });
+
+  it('saves a rating through ratingsApi, closes the sheet, and dismisses the nudge', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2026-04-21T12:00:00.000Z'));
+
+    const save = jest.fn().mockResolvedValue(undefined);
+    const pastEvent: ScheduleEvent = {
+      id: 'past-unrated',
+      title: 'Calculus Review',
+      category: '学习',
+      start_time: '2026-04-21T09:00:00.000Z',
+      end_time: '2026-04-21T10:30:00.000Z',
+      repeat: 'none',
+      location: 'Teaching Hall A201',
+      is_completed: false,
+    };
+    mockUseEvents.mockReturnValue({ events: [pastEvent], loading: false, refresh: jest.fn() });
+    mockUseRatings.mockReturnValue({
+      ratings: [],
+      loading: false,
+      error: null,
+      refresh: jest.fn(),
+      save,
+      remove: jest.fn(),
+    });
+
+    const result = renderRoot('home');
+
+    expect(result.getByTestId('starlight-rating-nudge-rate')).toBeTruthy();
+    fireEvent.press(result.getByTestId('starlight-rating-nudge-rate'));
+    expect(result.getByTestId('starlight-rating-sheet')).toBeTruthy();
+
+    fireEvent.press(result.getByTestId('starlight-rating-efficiency-5'));
+    fireEvent.press(result.getByTestId('starlight-rating-mood-4'));
+    fireEvent.changeText(result.getByTestId('starlight-rating-reflection'), 'Solid review block.');
+    fireEvent.press(result.getByTestId('starlight-rating-save'));
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalledWith(
+        {
+          slot_start: pastEvent.start_time,
+          slot_end: pastEvent.end_time,
+          linked_event_id: pastEvent.id,
+          efficiency: 5,
+          rating: 5,
+          mood: '好',
+          reflection: 'Solid review block.',
+        },
+        undefined,
+      );
+    });
+    await waitFor(() => expect(result.queryByTestId('starlight-rating-sheet')).toBeNull());
+    expect(result.queryByTestId('starlight-rating-nudge-rate')).toBeNull();
+
   });
 });

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated, Modal, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, StyleSheet, View } from 'react-native';
 import { useTheme, useThemeSettings } from '../../../theme/ThemeContext';
 import { useEvents, useSemesterConfig } from '../../../features/schedule';
 import { type CategoryKey, type ScheduleEvent } from '../../../features/schedule/types';
@@ -15,8 +15,6 @@ import { starlightNebulaPalette, STARLIGHT_NEBULA_COLORS } from '../palettes/neb
 import type { StarlightPaletteColors } from './starlightTypes';
 import {
   StarlightBackground,
-  StarlightSheetBtn,
-  StarlightSheetRow,
   StarlightTabBar,
   type StarlightTab,
   type StarlightTimelineEvent,
@@ -24,6 +22,7 @@ import {
 import { StarHome } from './StarHome';
 import { StarMatrix } from './StarMatrix';
 import { StarEventSheet } from './StarEventSheet';
+import { StarRatingSheet, STARLIGHT_MOOD_LABELS, type StarRatingSavePayload } from './StarRatingSheet';
 import { StarSettings } from './StarSettings';
 import { StarTodoSheet } from './StarTodoSheet';
 import { StarTodos } from './StarTodos';
@@ -172,6 +171,28 @@ export function StarlightRoot({ route }: { route: RouteName }) {
   const todoSheetIsNew = todoSheetState?.mode === 'create';
   const todoSheetTodo = todoSheetState?.mode === 'edit' ? todoSheetState.todo : null;
 
+  const handleSaveRating = async ({ efficiency, moodIndex, reflection }: StarRatingSavePayload) => {
+    if (!ratingTarget) return;
+    try {
+      await ratingsApi.save(
+        {
+          slot_start: ratingTarget.start_time,
+          slot_end: ratingTarget.end_time,
+          linked_event_id: ratingTarget.id,
+          efficiency,
+          rating: efficiency,
+          mood: STARLIGHT_MOOD_LABELS[moodIndex - 1],
+          reflection,
+        },
+        existingRating?.id,
+      );
+      setRatingTargetId(null);
+      setDismissedNudgeId(ratingTarget.id);
+    } catch (error) {
+      Alert.alert('保存评分失败', error instanceof Error ? error.message : '请稍后重试。');
+    }
+  };
+
   const screens: Array<{ key: StarlightTab; element: React.ReactNode }> = [
     {
       key: 'today',
@@ -258,11 +279,12 @@ export function StarlightRoot({ route }: { route: RouteName }) {
         onClose={() => setEventSheetId(null)}
         onSave={() => setEventSheetId(null)}
       />
-      <StarlightRatingSheet
+      <StarRatingSheet
         p={p}
         event={ratingTarget}
         existing={existingRating}
         onClose={() => setRatingTargetId(null)}
+        onSave={(payload) => void handleSaveRating(payload)}
       />
       <StarTodoSheet p={p} todo={todoSheetTodo} isNew={todoSheetIsNew} onClose={() => setTodoSheetState(null)} />
     </StarlightBackground>
@@ -292,96 +314,7 @@ function Screen({ name, active, children }: { name: StarlightTab; active: boolea
   );
 }
 
-function SheetFrame({
-  p,
-  visible,
-  testID,
-  title,
-  onClose,
-  children,
-}: {
-  p: StarlightPaletteColors;
-  visible: boolean;
-  testID: string;
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
-      <View testID={testID} style={[styles.scrim, { backgroundColor: p.sheetScrim }]}>
-        <View style={[styles.sheet, { backgroundColor: p.panelSolid, borderColor: p.line }]}>
-          <Text style={[styles.sheetTitle, { color: p.ink }]}>{title}</Text>
-          {children}
-          <StarlightSheetBtn p={p} label="Close" onPress={onClose} testID={`${testID}-close`} />
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-function StarlightRatingSheet({
-  p,
-  event,
-  existing,
-  onClose,
-}: {
-  p: StarlightPaletteColors;
-  event: StarlightEvent | null;
-  existing?: TimeSlotRating;
-  onClose: () => void;
-}) {
-  return (
-    <SheetFrame p={p} visible={!!event} testID="starlight-rating-sheet" title="Rating" onClose={onClose}>
-      <StarlightSheetRow p={p} label="Event" value={event?.title ?? '-'} />
-      <StarlightSheetRow p={p} label="Efficiency" value={existing ? `${existing.efficiency}/5` : 'Unrated'} />
-    </SheetFrame>
-  );
-}
-
 const styles = StyleSheet.create({
   stack: { flex: 1, position: 'relative', overflow: 'hidden' },
   screen: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
-  panel: {
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
-    marginVertical: 12,
-  },
-  panelTitle: {
-    fontSize: 11,
-    letterSpacing: 2,
-    fontWeight: '700',
-  },
-  bodyText: {
-    marginTop: 6,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  nudge: {
-    marginVertical: 10,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  scrim: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 20,
-    gap: 12,
-  },
-  sheetTitle: {
-    fontFamily: 'Fraunces-SemiBold',
-    fontSize: 24,
-    lineHeight: 30,
-  },
 });

@@ -25,6 +25,7 @@ export function StarlightSheetBtn({
 
   return (
     <Pressable
+      accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
       testID={testID}
