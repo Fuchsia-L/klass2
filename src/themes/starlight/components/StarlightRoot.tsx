@@ -1,8 +1,8 @@
 import React from 'react';
-import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTheme, useThemeSettings } from '../../../theme/ThemeContext';
 import { useEvents, useSemesterConfig } from '../../../features/schedule';
-import { CATEGORIES, type CategoryKey, type ScheduleEvent } from '../../../features/schedule/types';
+import { type CategoryKey, type ScheduleEvent } from '../../../features/schedule/types';
 import { expandRepeatingEvents } from '../../../features/schedule/domain/repeat';
 import { getSemesterWeek, getWeekStart } from '../../../features/schedule/domain/calendar';
 import { useRatings } from '../../../features/rating';
@@ -15,16 +15,16 @@ import { starlightNebulaPalette, STARLIGHT_NEBULA_COLORS } from '../palettes/neb
 import type { StarlightPaletteColors } from './starlightTypes';
 import {
   StarlightBackground,
-  StarlightNowLine,
   StarlightPaletteCell,
   StarlightSheetBtn,
   StarlightSheetRow,
   StarlightTabBar,
-  StarlightTimelineRow,
   StarlightTodoRow,
   type StarlightTab,
   type StarlightTimelineEvent,
 } from './parts';
+import { StarHome } from './StarHome';
+import { StarMatrix } from './StarMatrix';
 
 type StarlightEvent = ScheduleEvent & { state: StarlightTimelineEvent['state'] };
 
@@ -93,18 +93,6 @@ function nudgeCopy(event: StarlightEvent | null): string {
   if (diffMin === 0) return '刚结束';
   if (diffMin < 60) return `刚结束 ${diffMin} 分钟`;
   return `结束 ${Math.floor(diffMin / 60)} 小时前`;
-}
-
-function toTimelineEvent(event: StarlightEvent): StarlightTimelineEvent {
-  return {
-    id: event.id,
-    startLabel: formatTime(event.start_time),
-    endLabel: formatTime(event.end_time),
-    title: event.title,
-    location: event.location,
-    categoryLabel: CATEGORIES[event.category]?.label ?? CATEGORIES['其他'].label,
-    state: event.state,
-  };
 }
 
 export function StarlightRoot({ route }: { route: RouteName }) {
@@ -197,9 +185,10 @@ export function StarlightRoot({ route }: { route: RouteName }) {
     {
       key: 'today',
       element: (
-        <StarlightHome
+        <StarHome
           p={p}
           events={todayEvents}
+          todos={todos}
           ratingsByEventId={ratingsByEventId}
           categoryByEventId={categoryByEventId}
           semesterWeek={semesterWeek}
@@ -219,7 +208,7 @@ export function StarlightRoot({ route }: { route: RouteName }) {
     {
       key: 'week',
       element: (
-        <StarlightMatrix
+        <StarMatrix
           p={p}
           events={matrixEvents}
           weekStart={viewingWeekStart}
@@ -303,121 +292,6 @@ function Screen({ name, active, children }: { name: StarlightTab; active: boolea
     >
       {children}
     </Animated.View>
-  );
-}
-
-function StarlightHome({
-  p,
-  events,
-  ratingsByEventId,
-  semesterWeek,
-  nudgeEvent,
-  nudgeText,
-  unratedCount,
-  openTodos,
-  doneTodos,
-  onOpenEvent,
-  onRate,
-  onDismissNudge,
-  onGoTodos,
-}: {
-  p: StarlightPaletteColors;
-  events: StarlightEvent[];
-  ratingsByEventId: RatingsByEventId;
-  categoryByEventId: Record<string, CategoryKey>;
-  semesterWeek: number | null;
-  nudgeEvent: StarlightEvent | null;
-  nudgeText: string;
-  unratedCount: number;
-  openTodos: number;
-  doneTodos: number;
-  onOpenEvent: (id: string) => void;
-  onRate: (id: string) => void;
-  onDismissNudge: () => void;
-  onToggleTodo: (id: string) => void;
-  onGoTodos: () => void;
-}) {
-  return (
-    <ScrollView testID="starlight-home" contentContainerStyle={styles.screenContent}>
-      <Text style={[styles.kicker, { color: p.subtle }]}>TODAY</Text>
-      <Text style={[styles.title, { color: p.ink }]}>Starlight Schedule</Text>
-      <StarlightNowLine p={p} time={formatTime(new Date().toISOString())} />
-      <View style={[styles.panel, { backgroundColor: p.panel, borderColor: p.line }]}>
-        <Text style={[styles.panelTitle, { color: p.accent }]}>CURRENT ORBIT</Text>
-        <Text style={[styles.bodyText, { color: p.subtle }]}>
-          Week {semesterWeek ?? '-'} · Open todos {openTodos} · Done {doneTodos} · Unrated {unratedCount}
-        </Text>
-        {nudgeEvent ? (
-          <Pressable testID="starlight-nudge" onPress={onDismissNudge} style={styles.nudge}>
-            <Text style={[styles.bodyText, { color: p.ink }]}>{nudgeEvent.title}</Text>
-            <Text style={[styles.bodyText, { color: p.subtle }]}>{nudgeText}</Text>
-          </Pressable>
-        ) : null}
-        <StarlightSheetBtn p={p} label="Todos" onPress={onGoTodos} />
-      </View>
-      {events.map((event) => {
-        const rating = ratingsByEventId[event.id];
-        return (
-          <StarlightTimelineRow
-            key={`${event.id}-${event.start_time}`}
-            p={p}
-            event={toTimelineEvent(event)}
-            rating={rating ? { efficiency: rating.efficiency, moodLabel: rating.mood } : undefined}
-            onOpen={() => onOpenEvent(event.id)}
-            onRate={() => onRate(event.id)}
-            testID={`starlight-event-${event.id}`}
-          />
-        );
-      })}
-    </ScrollView>
-  );
-}
-
-function StarlightMatrix({
-  p,
-  events,
-  weekStart,
-  semesterWeek,
-  weekOffset,
-  onPrevWeek,
-  onNextWeek,
-  onResetWeek,
-  onOpenEvent,
-}: {
-  p: StarlightPaletteColors;
-  events: StarlightEvent[];
-  weekStart: Date;
-  semesterWeek: number | null;
-  weekOffset: number;
-  onPrevWeek: () => void;
-  onNextWeek: () => void;
-  onResetWeek: () => void;
-  onOpenEvent: (id: string) => void;
-}) {
-  return (
-    <ScrollView testID="starlight-matrix" contentContainerStyle={styles.screenContent}>
-      <Text style={[styles.kicker, { color: p.subtle }]}>WEEK</Text>
-      <Text style={[styles.title, { color: p.ink }]}>Week Matrix</Text>
-      <View style={styles.buttonRow}>
-        <StarlightSheetBtn p={p} label="Prev" onPress={onPrevWeek} />
-        <StarlightSheetBtn p={p} label="Now" onPress={onResetWeek} />
-        <StarlightSheetBtn p={p} label="Next" onPress={onNextWeek} />
-      </View>
-      <View style={[styles.panel, { backgroundColor: p.panel, borderColor: p.line }]}>
-        <Text style={[styles.bodyText, { color: p.subtle }]}>
-          {weekStart.toDateString()} · Offset {weekOffset} · Semester {semesterWeek ?? '-'}
-        </Text>
-      </View>
-      {events.map((event) => (
-        <StarlightTimelineRow
-          key={`${event.id}-${event.start_time}`}
-          p={p}
-          event={toTimelineEvent(event)}
-          onOpen={() => onOpenEvent(event.id)}
-          testID={`starlight-week-event-${event.id}`}
-        />
-      ))}
-    </ScrollView>
   );
 }
 
