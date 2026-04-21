@@ -6,9 +6,10 @@ import RootLayout from './_layout';
 import { SYNC_TOKEN_STORAGE_KEY, resetSyncSchedulerForTests } from '../src/features/rating/sync';
 
 const tabScreens: Array<{ name: string; title: string; icon: string }> = [];
+const mockUseFonts = jest.fn((_fontMap: Record<string, unknown>) => [true, null] as const);
 
 jest.mock('expo-font', () => ({
-  useFonts: () => [true, null],
+  useFonts: (fontMap: Record<string, unknown>) => mockUseFonts(fontMap),
 }));
 
 jest.mock('expo-status-bar', () => ({
@@ -78,6 +79,7 @@ describe('RootLayout tabs', () => {
 
   beforeEach(() => {
     tabScreens.length = 0;
+    mockUseFonts.mockClear();
     resetSyncSchedulerForTests();
     appStateSpy = jest.spyOn(AppState, 'addEventListener').mockImplementation(
       (() => ({ remove: jest.fn() })) as unknown as typeof AppState.addEventListener,
@@ -102,6 +104,21 @@ describe('RootLayout tabs', () => {
       { name: 'rating', title: 'RATING', icon: 'Star' },
       { name: 'settings', title: 'SETTINGS', icon: 'Settings' },
     ]);
+
+    const fontMap = mockUseFonts.mock.calls[0]?.[0];
+    expect(fontMap).toBeDefined();
+    expect(Object.keys(fontMap as Record<string, unknown>)).toEqual(
+      expect.arrayContaining([
+        'Fraunces-Regular',
+        'Fraunces-Medium',
+        'Fraunces-SemiBold',
+        'Fraunces-Bold',
+        'Inter-Regular',
+        'Inter-Medium',
+        'Inter-SemiBold',
+        'Inter-Bold',
+      ]),
+    );
   });
 
   it('wires RatingServiceProvider so boot with a stored token starts the scheduler once', async () => {

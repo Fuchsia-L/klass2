@@ -5,14 +5,15 @@ React Native + Expo (SDK 55, expo-router) app for schedule + time-slot rating wi
 ## 1. File Structure
 
 ### App shell (expo-router)
-- `app/_layout.tsx` — Root layout. Wraps `<Tabs>` in `ThemeProvider` + `RatingServiceProvider` + `SafeAreaProvider`. Hides native tab bar for minimal theme.
+- `app/_layout.tsx` — Root layout. Wraps `<Tabs>` in `ThemeProvider` + `RatingServiceProvider` + `SafeAreaProvider`. Hides native tab bar for minimal theme. Registers Orbitron (legacy), Fraunces (starlight headings: Regular/Medium/SemiBold/Bold), and Inter (starlight body: Regular/Medium/SemiBold/Bold) via `useFonts()`.
 - `app/index.tsx` — TODAY route. Resolves palette, delegates to `ThemePackage.renderRoot('home')`.
 - `app/matrix.tsx` — Week route → `renderRoot('matrix')`.
 - `app/rating.tsx` — Rating route → `renderRoot('rating')`.
 - `app/settings.tsx` — Settings route → `renderRoot('settings')`.
 
 ### Theme registry
-- `src/themes/index.ts` — Exports `resolvePalette(id)`, `legacyPackage`, `minimalPackage`.
+- `src/themes/index.ts` — Exports `resolvePalette(id)`, `getAllPalettes()`, `legacyPackage`, `minimalPackage`, `starlightPackage`, `themePackages`.
+- `src/themes/index.test.ts` — Registry tests: starlight palette(s) discoverable via `getAllPalettes()` / `resolvePalette(id)` alongside legacy + minimal.
 - `src/themes/types.ts` — `ThemePackage { id, name, palettes[], renderRoot(route) }`, `ThemePalette`, `RouteName`.
 - `src/theme/ThemeContext.tsx` — `ThemeProvider`, `useTheme()`, `useThemeSettings()` (persists themeName to AsyncStorage).
 - `src/theme/index.ts` — `getTheme()`, `isThemeName()`, `DEFAULT_THEME`.
@@ -44,6 +45,11 @@ React Native + Expo (SDK 55, expo-router) app for schedule + time-slot rating wi
 - `components/parts/MinTabBar.tsx` — Bottom tab bar with `+` FAB.
 - `components/parts/MinTodoRow.tsx` — Single todo row.
 - `components/parts/usePulse.ts` — Opacity loop hook (1.0 ↔ 0.55, 2.4s).
+
+### Starlight theme (`src/themes/starlight/`) — scaffolding only (Phase 1)
+- `package.ts` — Exports `starlightPackage: ThemePackage` with id `'starlight'`. `renderRoot` returns an empty Fragment pending Phase 2 screen work.
+- `palettes/nebula.ts` — Exports `starlightNebulaPalette` (id `'starlight-nebula'`), `STARLIGHT_NEBULA_COLORS: StarlightPaletteColors`, and `buildStarlightNebulaThemeConfig(id)`. `ThemeConfig.fonts` is `{ heading: 'Fraunces-SemiBold', body: 'Inter-Regular' }`; `colors.ratingFill` maps to the firefly accent.
+- `components/starlightTypes.ts` — `StarlightPaletteColors` (dark, bg, bgGrad, ink, dim, line, subtle, panel, panelSolid, accent, accent2, nowLine, nowGlow, moonFace, moonShadow, star, firefly, sheetScrim, galaxy), `StarlightPaletteId`, `StarlightPaletteMap`.
 
 ### Legacy theme (`src/themes/legacy/`)
 - `package.ts` — `legacyPackage`. Lazy-requires per-route root (LegacyHome/Matrix/Rating/Settings).
@@ -99,8 +105,11 @@ React Native + Expo (SDK 55, expo-router) app for schedule + time-slot rating wi
 
 ### Theme dispatch
 - `ThemePackage.renderRoot(route: RouteName) → ReactNode` — Called by each `app/*.tsx`. `RouteName ∈ 'home'|'matrix'|'rating'|'settings'`.
-- `resolvePalette(id: string) → ThemePalette` — Used by app routes to pick package + palette.
+- `resolvePalette(id: string) → { pkg, palette } | null` — Used by app routes to pick package + palette. Searches `themePackages` in order: legacy → minimal → starlight.
+- `getAllPalettes() → ThemePalette[]` — Flattens every package's palettes (used by settings palette picker and registry tests).
+- `getThemeConfigById(id: string) → ThemeConfig | null` — Convenience resolver to a palette's `ThemeConfig`.
 - `useTheme() → ThemeConfig` / `useThemeSettings() → { themeName, setThemeName }` — Context hooks.
+- `starlightPackage.renderRoot` — Returns an empty Fragment in Phase 1; screens land in a later phase.
 
 ### MinimalRoot (`src/themes/minimal/components/MinimalRoot.tsx`)
 - `MinimalRoot({ route }: { route: RouteName }) → ReactNode`. Caller: `minimalPackage.renderRoot`.
@@ -173,7 +182,7 @@ AsyncStorage → `loadEventsFromStorage` → `useEvents` (subscribes) → Minima
 - `react-native-screens ~4.23.0` — native stack backing.
 - `react-native-svg 15.15.3` — SVG primitives (for future trend charts).
 - `lucide-react-native ^0.577.0` — icons (`Plus`, `X`, `ChevronLeft/Right`, `Star`…).
-- `expo-font`, `expo-linking`, `expo-status-bar`, `expo-constants` — expo utilities; Orbitron font assets loaded via `expo-font`.
+- `expo-font`, `expo-linking`, `expo-status-bar`, `expo-constants` — expo utilities. `app/_layout.tsx` loads Orbitron (Regular/Bold) for legacy, Fraunces (Regular/Medium/SemiBold/Bold) for starlight headings, and Inter (Regular/Medium/SemiBold/Bold) for starlight body via `useFonts()`. Font files live under `assets/fonts/`.
 
 ### Dev / test
 - `jest ^29.7.0`, `jest-expo ^55.0.11`, `@testing-library/react-native ^13.3.3`, `react-test-renderer ^19.2.0`, `typescript ~5.9.2`.
@@ -183,3 +192,4 @@ AsyncStorage → `loadEventsFromStorage` → `useEvents` (subscribes) → Minima
 - Phase 1: Matrix swipe-week scaffolding (P2 docs consolidation; no code changes here).
 - Phase 2: Minimal timeline rails now use `softenCategoryColor(CATEGORIES[event.category].color)` (rgba alpha 0.55) in `MinTimelineRow.tsx`; past-row `opacity: 0.5` stacks on top of the colored rail. Added `MinTimelineRow.test.tsx` covering helper + past-state rail rendering.
 - Phase 3: Added `MinTrends` (parts/MinTrends.tsx) + `buildSevenDayTrendBuckets`; rendered at bottom of Today ScrollView. MinHome gained a `ratings` prop sourced from `useRatings().ratings` in MinimalRoot. Mood line/points via `react-native-svg`; empty days show 1px placeholder, mood polyline drawn only with ≥2 populated days. Added `MinTrends.test.tsx` and `MinHome.test.tsx`.
+- Starlight Phase 1: Registered `starlightPackage` (id `'starlight'`) in `src/themes/index.ts` alongside legacy + minimal. Added `src/themes/starlight/{package.ts, palettes/nebula.ts, components/starlightTypes.ts}` with the `starlight-nebula` palette and `StarlightPaletteColors` model. `renderRoot` is a placeholder Fragment. Registered Fraunces (Regular/Medium/SemiBold/Bold) and Inter (Regular/Medium/SemiBold/Bold) fonts in `app/_layout.tsx`; font assets added under `assets/fonts/`. Added `src/themes/index.test.ts` for palette discoverability.

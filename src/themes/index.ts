@@ -2,12 +2,14 @@ import type { ThemeConfig } from '../theme/types';
 import type { ThemePackage, ThemePalette } from './types';
 import { legacyPackage } from './legacy/package';
 import { minimalPackage } from './minimal/package';
+import { starlightPackage } from './starlight/package';
 
 export type { ThemePackage, ThemePalette, ThemePaletteMeta, RouteName } from './types';
 export { legacyPackage } from './legacy/package';
 export { minimalPackage } from './minimal/package';
+export { starlightPackage } from './starlight/package';
 
-export const themePackages: ThemePackage[] = [legacyPackage, minimalPackage];
+export const themePackages: ThemePackage[] = [legacyPackage, minimalPackage, starlightPackage];
 
 export function getAllPalettes(): ThemePalette[] {
   return themePackages.flatMap((pkg) => pkg.palettes);

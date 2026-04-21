@@ -74,6 +74,14 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     'Orbitron-Regular': require('../assets/fonts/Orbitron-Regular.ttf'),
     'Orbitron-Bold': require('../assets/fonts/Orbitron-Bold.ttf'),
+    'Fraunces-Regular': require('../assets/fonts/Fraunces-Regular.ttf'),
+    'Fraunces-Medium': require('../assets/fonts/Fraunces-Medium.ttf'),
+    'Fraunces-SemiBold': require('../assets/fonts/Fraunces-SemiBold.ttf'),
+    'Fraunces-Bold': require('../assets/fonts/Fraunces-Bold.ttf'),
+    'Inter-Regular': require('../assets/fonts/Inter-Regular.ttf'),
+    'Inter-Medium': require('../assets/fonts/Inter-Medium.ttf'),
+    'Inter-SemiBold': require('../assets/fonts/Inter-SemiBold.ttf'),
+    'Inter-Bold': require('../assets/fonts/Inter-Bold.ttf'),
   });
 
   if (!fontsLoaded && !fontError) return null;

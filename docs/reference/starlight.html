@@ -1,0 +1,1475 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8"/>
+<title>CyberSchedule · Starlight</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #04050f; overscroll-behavior: none; }
+  body {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    box-sizing: border-box;
+    color: #e6dffb;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  button { font-family: inherit; }
+  input, textarea { font-family: inherit; }
+  .matrix-header-strip::-webkit-scrollbar { display: none; }
+  .matrix-header-strip { scrollbar-width: none; }
+
+  /* star twinkle + moon + firefly animations — globally defined, theme-scoped */
+  /* three star rhythms — slow breathing, quick wink, slow pulse with scale */
+  @keyframes twinkleA {
+    0%, 100% { opacity: 0.15; }
+    50%      { opacity: 0.95; }
+  }
+  @keyframes twinkleB {
+    0%, 88%, 100% { opacity: 0.25; transform: scale(1); }
+    92%           { opacity: 1;    transform: scale(1.4); }
+    96%           { opacity: 0.6;  transform: scale(1); }
+  }
+  @keyframes twinkleC {
+    0%, 100% { opacity: 0.35; transform: scale(0.9); }
+    40%      { opacity: 0.8;  transform: scale(1.15); }
+    60%      { opacity: 0.5;  transform: scale(1); }
+  }
+  @keyframes shootA {
+    0%   { transform: translate(0, 0) rotate(-20deg); opacity: 0; }
+    3%   { opacity: 1; }
+    14%  { opacity: 1; }
+    18%  { transform: translate(-240px, 80px) rotate(-20deg); opacity: 0; }
+    100% { transform: translate(-240px, 80px) rotate(-20deg); opacity: 0; }
+  }
+  @keyframes shootB {
+    0%, 38% { transform: translate(0, 0) rotate(-15deg); opacity: 0; }
+    42%     { opacity: 1; }
+    54%     { opacity: 1; }
+    58%     { transform: translate(-200px, 60px) rotate(-15deg); opacity: 0; }
+    100%    { transform: translate(-200px, 60px) rotate(-15deg); opacity: 0; }
+  }
+  @keyframes shootC {
+    0%, 70% { transform: translate(0, 0) rotate(-28deg); opacity: 0; }
+    74%     { opacity: 1; }
+    88%     { opacity: 1; }
+    92%     { transform: translate(-280px, 110px) rotate(-28deg); opacity: 0; }
+    100%    { transform: translate(-280px, 110px) rotate(-28deg); opacity: 0; }
+  }
+  /* four firefly motion paths — gentle, irregular drift with fade */
+  @keyframes flyA {
+    0%   { transform: translate(0, 0);        opacity: 0.2; }
+    20%  { transform: translate(6px, -10px);  opacity: 0.8; }
+    50%  { transform: translate(14px, 4px);   opacity: 0.35; }
+    70%  { transform: translate(4px, 12px);   opacity: 0.9; }
+    100% { transform: translate(0, 0);        opacity: 0.2; }
+  }
+  @keyframes flyB {
+    0%   { transform: translate(0, 0);        opacity: 0.3; }
+    30%  { transform: translate(-10px, 6px);  opacity: 0.85; }
+    55%  { transform: translate(-4px, -10px); opacity: 0.4; }
+    80%  { transform: translate(10px, -4px);  opacity: 0.95; }
+    100% { transform: translate(0, 0);        opacity: 0.3; }
+  }
+  @keyframes flyC {
+    0%   { transform: translate(0, 0);        opacity: 0.15; }
+    40%  { transform: translate(2px, 16px);   opacity: 0.7; }
+    70%  { transform: translate(-6px, 8px);   opacity: 0.4; }
+    100% { transform: translate(0, 0);        opacity: 0.15; }
+  }
+  @keyframes pulseSoft {
+    0%, 100% { opacity: 0.25; transform: scale(0.9); }
+    50%      { opacity: 0.9;  transform: scale(1.2); }
+  }
+  @keyframes moonPulse {
+    0%, 100% { box-shadow: 0 0 24px rgba(201,182,255,0.35), 0 0 48px rgba(201,182,255,0.18); }
+    50%      { box-shadow: 0 0 36px rgba(201,182,255,0.55), 0 0 72px rgba(201,182,255,0.28); }
+  }
+  @keyframes nowShimmer {
+    0%, 100% { opacity: 0.6; }
+    50%      { opacity: 1; }
+  }
+  @keyframes cloudDrift {
+    0%   { transform: translateX(-20%); }
+    100% { transform: translateX(120%); }
+  }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+// ─────────────────────────────────────────────────────────────
+// Starlight — a quiet, celestial theme for CyberSchedule
+// Elements: starfield + moon (NOW) + occasional shooting star,
+//           firefly-like pulses on upcoming events, soft galaxy wash.
+// 4 palettes: 2 dark (Nebula / Midnight) + 2 light (Dawn / Lilac).
+// ─────────────────────────────────────────────────────────────
+
+const StarlightPalettes = {
+  nebula: {
+    name: 'Nebula', sub: '深紫星云', dark: true,
+    bg: '#060417',
+    bgGrad: 'radial-gradient(150% 95% at 20% -5%, #1a103a 0%, #0a0624 45%, #04030f 100%)',
+    ink: '#e8dffe', dim: '#4a4274', line: 'rgba(201,182,255,0.10)',
+    subtle: '#9688c8', panel: 'rgba(30,20,60,0.55)',
+    panelSolid: '#14102a',
+    accent: '#c9b6ff', accent2: '#6ea8ff',
+    nowLine: '#c9b6ff', nowGlow: 'rgba(201,182,255,0.55)',
+    moonFace: '#f3ecff', moonShadow: 'rgba(138,120,200,0.55)',
+    star: '#ffffff', firefly: '#ffd89b',
+    sheetScrim: 'rgba(4,3,15,0.72)',
+    galaxy: 'radial-gradient(ellipse 120% 50% at 40% 70%, rgba(140,110,220,0.08) 0%, transparent 65%)',
+  },
+  midnight: {
+    name: 'Midnight', sub: '深蓝之夜', dark: true,
+    bg: '#03060f',
+    bgGrad: 'radial-gradient(150% 95% at 50% -5%, #0a1838 0%, #050a1f 50%, #020410 100%)',
+    ink: '#e0eaff', dim: '#3a4670', line: 'rgba(155,193,255,0.10)',
+    subtle: '#8094c0', panel: 'rgba(15,28,58,0.55)',
+    panelSolid: '#0c1630',
+    accent: '#9bc1ff', accent2: '#b8a8ff',
+    nowLine: '#9bc1ff', nowGlow: 'rgba(155,193,255,0.55)',
+    moonFace: '#eaf1ff', moonShadow: 'rgba(120,145,200,0.55)',
+    star: '#ffffff', firefly: '#c3e0ff',
+    sheetScrim: 'rgba(2,4,12,0.72)',
+    galaxy: 'radial-gradient(ellipse 120% 50% at 60% 70%, rgba(110,150,230,0.07) 0%, transparent 65%)',
+  },
+  twilight: {
+    name: 'Twilight', sub: '暮色玫瑰', dark: true,
+    bg: '#0c0818',
+    bgGrad: 'radial-gradient(150% 95% at 80% -5%, #2a1028 0%, #140a22 45%, #060410 100%)',
+    ink: '#f0d8ea', dim: '#4a3252', line: 'rgba(230,180,210,0.10)',
+    subtle: '#a08098', panel: 'rgba(42,20,44,0.55)',
+    panelSolid: '#1a0e22',
+    accent: '#f2a8c8', accent2: '#c88ce0',
+    nowLine: '#f2a8c8', nowGlow: 'rgba(242,168,200,0.50)',
+    moonFace: '#fdeaf0', moonShadow: 'rgba(180,120,150,0.55)',
+    star: '#fff2e0', firefly: '#ffb080',
+    sheetScrim: 'rgba(8,4,16,0.72)',
+    galaxy: 'radial-gradient(ellipse 120% 50% at 30% 75%, rgba(220,130,170,0.08) 0%, transparent 65%)',
+  },
+  abyss: {
+    name: 'Abyss', sub: '幽蓝深海', dark: true,
+    bg: '#020814',
+    bgGrad: 'radial-gradient(150% 95% at 30% 105%, #083040 0%, #04162a 45%, #010408 100%)',
+    ink: '#d8ecf0', dim: '#2e4a58', line: 'rgba(140,210,220,0.10)',
+    subtle: '#6a98a8', panel: 'rgba(10,32,48,0.55)',
+    panelSolid: '#071826',
+    accent: '#7cdee0', accent2: '#8abfe0',
+    nowLine: '#7cdee0', nowGlow: 'rgba(124,222,224,0.50)',
+    moonFace: '#e8f8fa', moonShadow: 'rgba(100,170,190,0.55)',
+    star: '#e8f8ff', firefly: '#a0e8d8',
+    sheetScrim: 'rgba(1,4,10,0.72)',
+    galaxy: 'radial-gradient(ellipse 120% 50% at 70% 80%, rgba(90,200,220,0.07) 0%, transparent 65%)',
+  },
+};
+window.StarlightPalettes = StarlightPalettes;
+
+// ─────────────────────────────────────────────────────────────
+// Sample data — same shape as Minimal for consistency
+// ─────────────────────────────────────────────────────────────
+const SAMPLE_EVENTS = {
+  today: [
+    { id: 1, t: '07:30', end: '08:00', title: '晨跑', loc: '校园东路', tag: 'SPORT', state: 'past',
+      rating: { efficiency: 4, mood: 4, reflection: '节奏稳，比上次快一分钟。' } },
+    { id: 2, t: '09:00', end: '10:30', title: '高等数学', loc: '教学楼 A201', tag: 'STUDY', state: 'past', rating: null },
+    { id: 3, t: '11:00', end: '12:00', title: '项目评审', loc: '会议室 3', tag: 'WORK', state: 'next', rating: null },
+    { id: 4, t: '14:00', end: '15:30', title: '数据结构', loc: '教学楼 B105', tag: 'STUDY', state: 'upcoming', rating: null },
+    { id: 5, t: '16:30', end: '17:15', title: '健身', loc: '综合体育馆', tag: 'SPORT', state: 'upcoming', rating: null },
+    { id: 6, t: '19:30', end: '21:30', title: '读书会', loc: '图书馆 3F', tag: 'LIFE', state: 'upcoming', rating: null },
+  ],
+  justEnded: { id: 'je1', t: '10:00', end: '10:28', title: '站立会', loc: '2F 角落', tag: 'WORK', endedMinAgo: 2 },
+};
+
+const MOOD_LABELS = ['困', '躁', '平', '好', '极'];
+const MOOD_FACES = ['(๑-_-๑)', '(>﹏<)', '( ･_･)', '( ´ ▽ ` )', '(๑>ᴗ<๑)'];
+
+const SAMPLE_TODOS = [
+  { id: 't1', title: '交作业 - 数据结构', due: '今日 23:59', done: false, note: '第 4 章习题' },
+  { id: 't2', title: '买咖啡豆', due: '今日', done: false, note: '' },
+  { id: 't3', title: '回邮件给导师', due: '明日 12:00', done: false, note: '' },
+  { id: 't4', title: '订周末火车票', due: '4月22日', done: false, note: '出发 18:30' },
+  { id: 't5', title: '预习高数第三章', due: '本周', done: true, note: '' },
+  { id: 't6', title: '整理读书笔记', due: '上周', done: true, note: '' },
+];
+
+// ─────────────────────────────────────────────────────────────
+// Starfield — mixed rhythms: 60 stars, 3 animation flavors,
+// plus a handful of static “dust” pinpoints for depth.
+// ─────────────────────────────────────────────────────────────
+const ANIMS = ['twinkleA', 'twinkleB', 'twinkleC'];
+const STARS = Array.from({ length: 72 }, (_, i) => {
+  const seed = (n) => ((i * 9301 + n * 49297) % 233280) / 233280;
+  const r1 = seed(1), r2 = seed(2), r3 = seed(3), r4 = seed(4), r5 = seed(5), r6 = seed(6), r7 = seed(7);
+  const variant = Math.floor(r7 * 3);
+  const isStatic = r6 < 0.18;   // ~18% static dust
+  return {
+    x: r1 * 100,
+    y: r2 * 100,
+    size: isStatic ? 0.5 + r3 * 0.7 : 0.6 + r3 * 2.0,
+    delay: r4 * 8,
+    dur: [4.2, 7.5, 5.4][variant] + r5 * 2,
+    bright: 0.35 + r6 * 0.55,
+    anim: ANIMS[variant],
+    isStatic,
+  };
+});
+
+function Starfield({ p }) {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, overflow: 'hidden',
+      pointerEvents: 'none',
+    }}>
+      {/* very soft low-frequency wash */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: p.galaxy,
+        filter: 'blur(40px)',
+      }}/>
+      {STARS.map((s, i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          left: `${s.x}%`, top: `${s.y}%`,
+          width: s.size, height: s.size, borderRadius: '50%',
+          background: p.star,
+          opacity: s.isStatic ? s.bright * 0.55 : s.bright,
+          animation: s.isStatic ? 'none' : `${s.anim} ${s.dur}s ease-in-out ${s.delay}s infinite`,
+          boxShadow: p.dark && s.size > 1.2 ? `0 0 ${s.size * 2.2}px ${p.star}` : 'none',
+        }}/>
+      ))}
+      {/* three shooting stars taking turns at different positions */}
+      {p.dark && (
+        <>
+          <div style={{
+            position: 'absolute', left: '85%', top: '6%',
+            width: 80, height: 1,
+            background: `linear-gradient(90deg, transparent, ${p.star}, transparent)`,
+            opacity: 0, transform: 'rotate(-20deg)',
+            animation: 'shootA 22s linear infinite',
+            boxShadow: `0 0 6px ${p.star}`,
+          }}/>
+          <div style={{
+            position: 'absolute', left: '95%', top: '32%',
+            width: 60, height: 1,
+            background: `linear-gradient(90deg, transparent, ${p.star}, transparent)`,
+            opacity: 0, transform: 'rotate(-15deg)',
+            animation: 'shootB 22s linear infinite',
+            boxShadow: `0 0 5px ${p.star}`,
+          }}/>
+          <div style={{
+            position: 'absolute', left: '78%', top: '18%',
+            width: 90, height: 1,
+            background: `linear-gradient(90deg, transparent, ${p.star}, transparent)`,
+            opacity: 0, transform: 'rotate(-28deg)',
+            animation: 'shootC 22s linear infinite',
+            boxShadow: `0 0 7px ${p.star}`,
+          }}/>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Moon — NOW indicator, with soft glow
+// ─────────────────────────────────────────────────────────────
+function Moon({ p, size = 14, phase = 0.75 }) {
+  // phase: 0=new, 0.5=full, 1=new (simplified — 0.75 waxing gibbous)
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: p.moonFace,
+      position: 'relative',
+      animation: p.dark ? 'moonPulse 3.2s ease-in-out infinite' : 'none',
+      flexShrink: 0,
+    }}>
+      {/* crescent shadow */}
+      <div style={{
+        position: 'absolute',
+        top: 0, right: 0,
+        width: size * (1 - phase * 1.2), height: size,
+        background: p.moonShadow,
+        borderRadius: '50%',
+        opacity: p.dark ? 0.55 : 0.25,
+      }}/>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Firefly — cycles among 4 motion paths with varied durations.
+// Softer glow, slower pulse, no two identical next to each other.
+// ─────────────────────────────────────────────────────────────
+const FLY_VARIANTS = [
+  { anim: 'flyA',      dur: 5.8 },
+  { anim: 'flyB',      dur: 6.4 },
+  { anim: 'flyC',      dur: 7.2 },
+  { anim: 'pulseSoft', dur: 4.5 },
+];
+function Firefly({ p, seed = 0, top = 50, left, right }) {
+  const v = FLY_VARIANTS[seed % FLY_VARIANTS.length];
+  const delay = ((seed * 13) % 50) / 10;
+  const size = 2 + ((seed * 7) % 3);
+  const pos = left !== undefined ? { left } : { right };
+  return (
+    <div style={{
+      position: 'absolute',
+      top, ...pos, width: size, height: size,
+      borderRadius: '50%',
+      background: p.firefly,
+      boxShadow: p.dark
+        ? `0 0 ${size * 2}px ${p.firefly}, 0 0 ${size * 4}px ${p.firefly}`
+        : `0 0 ${size * 1.5}px ${p.firefly}`,
+      animation: `${v.anim} ${v.dur}s ease-in-out ${delay}s infinite`,
+      pointerEvents: 'none',
+      filter: 'blur(0.4px)',
+    }}/>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Soft cloud — drifts across light palettes' sky band
+// ─────────────────────────────────────────────────────────────
+function Cloud({ p, top = 20, size = 80, dur = 50, delay = 0 }) {
+  return (
+    <div style={{
+      position: 'absolute',
+      top, left: 0,
+      width: size, height: size / 2.4,
+      borderRadius: size,
+      background: p.dark ? 'rgba(180,170,230,0.08)' : 'rgba(255,255,255,0.55)',
+      filter: 'blur(12px)',
+      animation: `cloudDrift ${dur}s linear ${delay}s infinite`,
+      pointerEvents: 'none',
+    }}/>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Root app shell — 4 screens + 2 sheets
+// ─────────────────────────────────────────────────────────────
+function StarlightApp({ paletteKey, setPaletteKey }) {
+  const p = StarlightPalettes[paletteKey];
+  const [tab, setTab] = React.useState('today');
+  const [sheetId, setSheetId] = React.useState(null);
+  const [todos, setTodos] = React.useState(SAMPLE_TODOS);
+  const [ratings, setRatings] = React.useState(() => {
+    const init = {};
+    SAMPLE_EVENTS.today.forEach(e => { if (e.rating) init[e.id] = e.rating; });
+    return init;
+  });
+  const [ratingTarget, setRatingTarget] = React.useState(null);
+  const [nudgeDismissed, setNudgeDismissed] = React.useState(false);
+
+  const openSheet = (id) => setSheetId(id);
+  const closeSheet = () => setSheetId(null);
+  const openRating = (id) => setRatingTarget(id);
+  const closeRating = () => setRatingTarget(null);
+  const saveRating = (id, rating) => {
+    setRatings(rs => ({ ...rs, [id]: rating }));
+    setRatingTarget(null);
+    if (id === 'je1') setNudgeDismissed(true);
+  };
+  const toggleTodo = (id) => setTodos(ts => ts.map(t => t.id === id ? { ...t, done: !t.done } : t));
+
+  const sheetEvent = sheetId && sheetId !== 'new' ? SAMPLE_EVENTS.today.find(e => e.id === sheetId) : null;
+  const todoOpen = todos.filter(t => !t.done).length;
+  const todoDone = todos.filter(t => t.done).length;
+
+  const justEnded = SAMPLE_EVENTS.justEnded;
+  const showNudge = !nudgeDismissed && !ratings[justEnded.id];
+  const unratedCount = SAMPLE_EVENTS.today.filter(e => e.state === 'past' && !ratings[e.id]).length;
+
+  const ratingEvent = ratingTarget === 'je1'
+    ? justEnded
+    : (ratingTarget ? SAMPLE_EVENTS.today.find(e => e.id === ratingTarget) : null);
+
+  return (
+    <div style={{
+      width: 360, height: 760,
+      background: p.bgGrad,
+      color: p.ink,
+      borderRadius: 42,
+      overflow: 'hidden',
+      position: 'relative',
+      display: 'flex', flexDirection: 'column',
+      boxShadow: p.dark
+        ? '0 40px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,182,255,0.08)'
+        : '0 40px 80px rgba(44,31,72,0.25), 0 0 0 1px rgba(106,78,168,0.12)',
+      fontFamily: "'Inter', ui-sans-serif, system-ui, sans-serif",
+    }}>
+      {/* Global starfield + drifting soft clouds behind everything */}
+      <Starfield p={p}/>
+      <Cloud p={p} top="8%" size={200} dur={60} delay={0}/>
+      <Cloud p={p} top="55%" size={140} dur={80} delay={25}/>
+
+      {/* Screen stack */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden', zIndex: 2 }}>
+        <Screen active={tab === 'today'}>
+          <StHome p={p} onOpenEvent={openSheet}
+            todoOpen={todoOpen} todoDone={todoDone} todos={todos}
+            onToggleTodo={toggleTodo} onGoTodos={() => setTab('todos')}
+            ratings={ratings} onRate={openRating}
+            nudge={showNudge ? justEnded : null}
+            onDismissNudge={() => setNudgeDismissed(true)}
+            unratedCount={unratedCount}/>
+        </Screen>
+        <Screen active={tab === 'week'}>
+          <StMatrix p={p} onOpenEvent={openSheet} ratings={ratings}/>
+        </Screen>
+        <Screen active={tab === 'todos'}>
+          <StTodos p={p} todos={todos} onToggle={toggleTodo}/>
+        </Screen>
+        <Screen active={tab === 'settings'}>
+          <StSettings p={p} paletteKey={paletteKey} onPaletteChange={setPaletteKey}/>
+        </Screen>
+      </div>
+
+      <StTabBar p={p} tab={tab} setTab={setTab} onAdd={() => openSheet('new')}/>
+      <StEventSheet p={p} event={sheetEvent} isNew={sheetId === 'new'} onClose={closeSheet}/>
+      <StRatingSheet p={p} event={ratingEvent}
+        existing={ratingTarget ? ratings[ratingTarget] : null}
+        onClose={closeRating}
+        onSave={(r) => saveRating(ratingTarget, r)}/>
+    </div>
+  );
+}
+
+function Screen({ active, children }) {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      opacity: active ? 1 : 0,
+      pointerEvents: active ? 'auto' : 'none',
+      transition: 'opacity 320ms ease',
+      display: 'flex', flexDirection: 'column',
+    }}>
+      {children}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// HOME — timeline with firefly upcoming indicators & moon NOW
+// ─────────────────────────────────────────────────────────────
+function StHome({ p, onOpenEvent, todoOpen, todoDone, todos, onToggleTodo, onGoTodos,
+  ratings, onRate, nudge, onDismissNudge, unratedCount }) {
+  const events = SAMPLE_EVENTS.today;
+  const [todoExpanded, setTodoExpanded] = React.useState(false);
+  return (
+    <div style={{
+      flex: 1, display: 'flex', flexDirection: 'column',
+      color: p.ink, position: 'relative',
+    }}>
+      {/* Header */}
+      <div style={{ padding: '32px 22px 18px' }}>
+        <div style={{
+          fontSize: 10, letterSpacing: 3, color: p.subtle, fontWeight: 500,
+          textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <Moon p={p} size={10} phase={0.75}/>
+          <span>Wednesday · Apr 19</span>
+        </div>
+        <div style={{
+          fontFamily: "'Fraunces', serif",
+          fontSize: 46, fontWeight: 400, letterSpacing: -1, marginTop: 8,
+          fontStyle: 'italic',
+          fontVariationSettings: '"opsz" 144',
+          lineHeight: 1,
+        }}>Tonight</div>
+        <div style={{
+          display: 'flex', gap: 10, marginTop: 10, alignItems: 'center',
+          fontSize: 12, color: p.subtle, letterSpacing: 0.4,
+        }}>
+          <span>{events.length} 事件</span>
+          <span style={{ opacity: 0.4 }}>✦</span>
+          <span>第 6 周</span>
+        </div>
+      </div>
+
+      {/* Todo counter — glassy pill */}
+      <div style={{ padding: '0 22px 8px' }}>
+        <div
+          onClick={() => setTodoExpanded(v => !v)}
+          style={{
+            padding: '12px 16px', display: 'flex', alignItems: 'center',
+            cursor: 'pointer', userSelect: 'none',
+            background: p.panel,
+            backdropFilter: 'blur(14px)',
+            WebkitBackdropFilter: 'blur(14px)',
+            border: `1px solid ${p.line}`,
+            borderRadius: 14,
+          }}>
+          <div style={{
+            fontSize: 10, letterSpacing: 2, color: p.subtle, fontWeight: 600,
+            textTransform: 'uppercase', marginRight: 10,
+          }}>Todos</div>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{
+              fontFamily: "'Fraunces', serif",
+              fontSize: 20, fontWeight: 500, color: p.ink,
+              fontVariantNumeric: 'tabular-nums',
+            }}>{todoOpen}</span>
+            <span style={{ fontSize: 11, color: p.subtle }}>
+              待办 · {todoDone} 已完成
+            </span>
+          </div>
+          <div style={{
+            fontSize: 11, color: p.subtle,
+            transform: todoExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+            transition: 'transform 240ms ease',
+          }}>▸</div>
+        </div>
+        <div style={{
+          maxHeight: todoExpanded ? 240 : 0,
+          overflow: 'hidden', transition: 'max-height 320ms ease',
+        }}>
+          <div style={{ padding: '8px 6px 0' }}>
+            {todos.filter(t => !t.done).slice(0, 4).map(t => (
+              <div key={t.id} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '8px 4px', fontSize: 13,
+              }}>
+                <div
+                  onClick={(e) => { e.stopPropagation(); onToggleTodo(t.id); }}
+                  style={{
+                    width: 14, height: 14, borderRadius: '50%',
+                    border: `1px solid ${p.accent}`, cursor: 'pointer', flexShrink: 0,
+                  }}/>
+                <div style={{ flex: 1, minWidth: 0, color: p.ink }}>{t.title}</div>
+                <div style={{ fontSize: 10, color: p.subtle, letterSpacing: 0.5 }}>{t.due}</div>
+              </div>
+            ))}
+            <div
+              onClick={onGoTodos}
+              style={{
+                padding: '8px 4px 0', fontSize: 10, letterSpacing: 2,
+                fontWeight: 600, color: p.subtle, textTransform: 'uppercase',
+                cursor: 'pointer',
+              }}>View all →</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Unrated nudge */}
+      {nudge && (
+        <div style={{
+          margin: '8px 22px', padding: '12px 14px',
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: p.panel, backdropFilter: 'blur(14px)',
+          WebkitBackdropFilter: 'blur(14px)',
+          border: `1px solid ${p.accent}`,
+          borderRadius: 14,
+        }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: p.accent, flexShrink: 0,
+            boxShadow: `0 0 6px ${p.accent}` }}/>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 500, color: p.ink }}>
+              {nudge.title} · 刚结束 {nudge.endedMinAgo} 分钟
+            </div>
+            <div style={{ fontSize: 9, letterSpacing: 1.6, color: p.subtle, marginTop: 2, textTransform: 'uppercase' }}>
+              留下今晚的一点记录
+            </div>
+          </div>
+          <div
+            onClick={() => onRate('je1')}
+            style={{
+              fontSize: 10, letterSpacing: 2, fontWeight: 600, textTransform: 'uppercase',
+              color: p.dark ? '#06060f' : '#ffffff', background: p.accent,
+              padding: '7px 12px', borderRadius: 999, cursor: 'pointer',
+            }}>Rate</div>
+          <div
+            onClick={onDismissNudge}
+            style={{ fontSize: 14, color: p.subtle, cursor: 'pointer', padding: '0 4px' }}>×</div>
+        </div>
+      )}
+
+      {/* Unrated summary */}
+      {unratedCount > 0 && (
+        <div
+          onClick={() => {
+            const first = events.find(e => e.state === 'past' && !ratings[e.id]);
+            if (first) onRate(first.id);
+          }}
+          style={{
+            margin: '4px 22px 8px', padding: '10px 14px',
+            display: 'flex', alignItems: 'center', gap: 10,
+            border: `1px dashed ${p.line}`, borderRadius: 14,
+            cursor: 'pointer',
+          }}>
+          <div style={{ fontSize: 10, letterSpacing: 2, color: p.subtle, fontWeight: 600, textTransform: 'uppercase' }}>
+            Unrated
+          </div>
+          <div style={{ flex: 1, fontSize: 12, color: p.ink }}>
+            {unratedCount} 件已结束事件待评价
+          </div>
+          <div style={{ fontSize: 12, color: p.subtle }}>→</div>
+        </div>
+      )}
+
+      {/* Timeline */}
+      <div style={{ flex: 1, overflow: 'auto', padding: '10px 0 20px' }}>
+        {events.map((e, i) => {
+          const rows = [];
+          if (e.state === 'next') rows.push(<NowLine key={`now-${i}`} p={p}/>);
+          rows.push(
+            <TimelineRow
+              key={e.id} event={e} p={p} rating={ratings[e.id]}
+              onClick={() => onOpenEvent(e.id)}
+              onRate={() => onRate(e.id)}
+            />
+          );
+          return rows;
+        })}
+      </div>
+    </div>
+  );
+}
+
+function TimelineRow({ event, p, onClick, rating, onRate }) {
+  const [pressed, setPressed] = React.useState(false);
+  const isPast = event.state === 'past';
+  const isNext = event.state === 'next';
+  const isUpcoming = event.state === 'upcoming';
+  const textCol = isPast ? p.dim : p.ink;
+  const metaCol = isPast ? p.dim : p.subtle;
+
+  return (
+    <div
+      onPointerDown={() => setPressed(true)}
+      onPointerUp={() => setPressed(false)}
+      onPointerLeave={() => setPressed(false)}
+      onClick={onClick}
+      style={{
+        position: 'relative', display: 'flex',
+        padding: '12px 22px',
+        cursor: 'pointer',
+        transform: pressed ? 'scale(0.985)' : 'scale(1)',
+        transition: 'transform 160ms ease',
+      }}>
+      <div style={{ width: 62, paddingRight: 10, textAlign: 'right' }}>
+        <div style={{
+          fontFamily: "'Fraunces', serif",
+          fontSize: 14, fontWeight: 400, color: textCol,
+          fontVariantNumeric: 'tabular-nums', lineHeight: 1.2,
+          textDecoration: isPast ? 'line-through' : 'none',
+          textDecorationThickness: '0.5px',
+          textDecorationColor: p.dim,
+        }}>{event.t}</div>
+        <div style={{ fontSize: 10, color: metaCol, marginTop: 2 }}>{event.end}</div>
+      </div>
+      <div style={{
+        width: 1, background: p.line, marginRight: 16, position: 'relative',
+        opacity: isPast ? 0.6 : 1,
+      }}>
+        <div style={{
+          position: 'absolute', left: -3, top: 6,
+          width: 7, height: 7, borderRadius: '50%',
+          background: isNext ? p.accent : (isPast ? 'transparent' : p.panelSolid),
+          border: `1px solid ${isNext ? p.accent : (isPast ? p.line : p.subtle)}`,
+          boxShadow: isNext ? `0 0 8px ${p.accent}` : 'none',
+        }}/>
+        {isUpcoming && (
+          <>
+          </>
+        )}
+      </div>
+      <div style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>
+        <div style={{
+          fontFamily: isNext ? "'Fraunces', serif" : "'Inter', sans-serif",
+          fontSize: 15, fontWeight: isNext ? 500 : 500, color: textCol,
+          lineHeight: 1.3,
+          textDecoration: isPast ? 'line-through' : 'none',
+          textDecorationThickness: '0.5px',
+          textDecorationColor: p.dim,
+          fontStyle: isNext ? 'italic' : 'normal',
+        }}>{event.title}</div>
+        <div style={{
+          fontSize: 12, color: metaCol, marginTop: 4,
+          display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+        }}>
+          <span>{event.loc}</span>
+          <span style={{ opacity: 0.4 }}>·</span>
+          <span style={{ fontSize: 10, letterSpacing: 1.2, fontWeight: 500 }}>{event.tag}</span>
+          {isPast && rating && (
+            <>
+              <span style={{ opacity: 0.4 }}>·</span>
+              <span style={{ fontSize: 10, letterSpacing: 0.8, fontWeight: 500, color: p.accent }}>
+                EFF {rating.efficiency}/5 · {MOOD_LABELS[rating.mood - 1]}
+              </span>
+            </>
+          )}
+          {isPast && !rating && onRate && (
+            <span
+              onClick={(e) => { e.stopPropagation(); onRate(); }}
+              style={{
+                marginLeft: 'auto', fontSize: 9, letterSpacing: 1.5, fontWeight: 600,
+                textTransform: 'uppercase', color: p.accent, padding: '3px 8px',
+                border: `1px solid ${p.accent}`, borderRadius: 999, cursor: 'pointer',
+              }}>未评 +</span>
+          )}
+        </div>
+      </div>
+      {isUpcoming && (
+        <>
+          <Firefly p={p} seed={event.id * 3 + 1} top={10} right={14}/>
+          <Firefly p={p} seed={event.id * 3 + 2} top={32} right={28}/>
+          <Firefly p={p} seed={event.id * 3 + 3} top={52} right={8}/>
+        </>
+      )}
+    </div>
+  );
+}
+
+function NowLine({ p }) {
+  return (
+    <div style={{
+      position: 'relative', display: 'flex', alignItems: 'center',
+      padding: '10px 22px 10px 0',
+    }}>
+      <div style={{ width: 62, paddingRight: 10, textAlign: 'right',
+        display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6,
+      }}>
+        <Moon p={p} size={12} phase={0.75}/>
+        <div style={{
+          fontFamily: "'Fraunces', serif",
+          fontSize: 12, fontWeight: 500, color: p.nowLine,
+          fontVariantNumeric: 'tabular-nums',
+        }}>10:30</div>
+      </div>
+      <div style={{
+        flex: 1, height: 1,
+        background: `linear-gradient(90deg, ${p.nowLine}, ${p.nowLine}66 80%, transparent)`,
+        position: 'relative',
+        animation: 'nowShimmer 3s ease-in-out infinite',
+        boxShadow: `0 0 6px ${p.nowGlow}`,
+      }}>
+        <div style={{
+          position: 'absolute', right: 8, top: -9,
+          fontSize: 9, fontWeight: 600, letterSpacing: 2, color: p.nowLine,
+          padding: '0 6px',
+          fontFamily: "'Inter', sans-serif",
+        }}>NOW</div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// MATRIX — week grid (adapted from Minimal's clean grid logic)
+// ─────────────────────────────────────────────────────────────
+function StMatrix({ p, onOpenEvent, ratings }) {
+  const days = ['一', '二', '三', '四', '五', '六', '日'];
+  const nums = [14, 15, 16, 17, 18, 19, 20];
+  const HOURS = Array.from({ length: 19 }, (_, i) => String(6 + i).padStart(2, '0'));
+  const HOUR_H = 60, START_H = 6;
+  const today = 2;
+  const NOW_HOUR = 10, NOW_MIN = 30;
+  const nowTop = (NOW_HOUR - START_H) * HOUR_H + (NOW_MIN / 60) * HOUR_H;
+  const yFor = (h, m = 0) => (h - START_H) * HOUR_H + (m / 60) * HOUR_H;
+  const block = (day, h1, m1, h2, m2, title, extra = {}) => ({
+    day, top: yFor(h1, m1), height: yFor(h2, m2) - yFor(h1, m1), title, ...extra,
+  });
+  const blocks = [
+    block(2, 7, 30, 8, 0, '晨跑', { id: 1, tag: 'SPORT', state: 'past' }),
+    block(0, 9, 0, 10, 30, '高等数学', { tag: 'STUDY', state: 'past' }),
+    block(2, 11, 0, 12, 0, '项目评审', { hero: true, id: 3, tag: 'WORK', state: 'next' }),
+    block(4, 9, 30, 11, 0, '物理实验', { tag: 'STUDY' }),
+    block(2, 14, 0, 15, 30, '数据结构', { id: 4, tag: 'STUDY' }),
+    block(5, 10, 0, 11, 0, '健身', { tag: 'SPORT' }),
+    block(2, 16, 30, 17, 15, '健身', { id: 5, tag: 'SPORT' }),
+    block(2, 19, 30, 21, 30, '读书会', { id: 6, tag: 'LIFE' }),,
+  ];
+  const scrollRef = React.useRef(null);
+  React.useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = Math.max(0, nowTop - 100);
+  }, []);
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', color: p.ink }}>
+      <div style={{ padding: '32px 22px 14px' }}>
+        <div style={{
+          fontSize: 10, letterSpacing: 3, color: p.subtle, fontWeight: 500,
+          textTransform: 'uppercase',
+        }}>Week 6 · Apr 14 – 20</div>
+        <div style={{
+          fontFamily: "'Fraunces', serif",
+          fontSize: 36, fontWeight: 400, letterSpacing: -0.8, marginTop: 6,
+          fontStyle: 'italic',
+        }}>Constellation</div>
+      </div>
+
+      {/* day strip */}
+      <div className="matrix-header-strip" style={{
+        display: 'flex',
+        borderBottom: `1px solid ${p.line}`,
+        scrollbarGutter: 'stable',
+        overflowY: 'scroll',
+      }}>
+        <div style={{ width: 36, flexShrink: 0, borderRight: `1px solid ${p.line}` }}/>
+        {days.map((d, i) => (
+          <div key={i} style={{
+            flex: 1, textAlign: 'center', padding: '10px 0',
+            background: i === today ? p.accent : 'transparent',
+            color: i === today ? (p.dark ? '#06060f' : '#fff') : p.ink,
+            borderRight: i < 6 ? `1px solid ${p.line}` : 'none',
+            position: 'relative',
+          }}>
+            <div style={{ fontSize: 10, opacity: 0.6, fontWeight: 500 }}>{d}</div>
+            <div style={{
+              fontFamily: "'Fraunces', serif",
+              fontSize: 15, fontWeight: 500, marginTop: 1,
+              fontVariantNumeric: 'tabular-nums',
+            }}>{nums[i]}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* grid */}
+      <div ref={scrollRef} style={{
+        flex: 1, overflow: 'auto', position: 'relative',
+        scrollbarGutter: 'stable',
+      }}>
+        <div style={{
+          position: 'relative',
+          paddingTop: 10,
+          height: HOUR_H * HOURS.length + 10,
+          display: 'flex',
+        }}>
+          <div style={{ width: 36, flexShrink: 0, position: 'relative', borderRight: `1px solid ${p.line}` }}>
+            {HOURS.map((h, i) => (
+              <div key={i} style={{
+                position: 'absolute',
+                top: i * HOUR_H - 7,
+                left: 0, right: 4,
+                height: 14,
+                display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
+                fontSize: 9, color: p.subtle, fontVariantNumeric: 'tabular-nums',
+                fontWeight: 500, padding: '0 4px',
+              }}>{h}</div>
+            ))}
+          </div>
+          <div style={{ flex: 1, display: 'flex', position: 'relative' }}>
+            {HOURS.map((_, i) => (
+              <div key={i} style={{
+                position: 'absolute', left: 0, right: 0, top: i * HOUR_H,
+                borderTop: `1px dashed ${p.line}`,
+                opacity: 0.7,
+                pointerEvents: 'none',
+              }}/>
+            ))}
+            {days.map((_, i) => (
+              <div key={i} style={{
+                flex: 1,
+                borderRight: i < 6 ? `1px solid ${p.line}` : 'none',
+                position: 'relative',
+              }}>
+                {blocks.filter(b => b.day === i).map((b, k) => (
+                  <MatrixBlock key={k} p={p} block={b}
+                    onClick={() => b.id && onOpenEvent(b.id)}/>
+                ))}
+              </div>
+            ))}
+            {/* NOW line + moon */}
+            <div style={{
+              position: 'absolute', left: 0, right: 0, top: nowTop,
+              height: 1,
+              background: `linear-gradient(90deg, transparent, ${p.nowLine}, ${p.nowLine}66, transparent)`,
+              zIndex: 3,
+              animation: 'nowShimmer 3s ease-in-out infinite',
+              boxShadow: `0 0 8px ${p.nowGlow}`,
+              pointerEvents: 'none',
+            }}>
+              <div style={{ position: 'absolute', left: -7, top: -6 }}>
+                <Moon p={p} size={12} phase={0.75}/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MatrixBlock({ p, block, onClick }) {
+  const [pressed, setPressed] = React.useState(false);
+  // per-tag accent tint — subtle, keeps palette coherent
+  const TAG_TINT = p.dark ? {
+    STUDY: `${p.accent2}33`,
+    SPORT: `${p.firefly}2a`,
+    WORK:  `${p.accent}30`,
+    LIFE:  `${p.firefly}22`,
+  } : {
+    STUDY: `${p.accent2}26`,
+    SPORT: `${p.firefly}1f`,
+    WORK:  `${p.accent}22`,
+    LIFE:  `${p.firefly}1a`,
+  };
+  const TAG_BORDER = {
+    STUDY: p.accent2, SPORT: p.firefly, WORK: p.accent, LIFE: p.firefly,
+  };
+  const tint = TAG_TINT[block.tag] || (p.dark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.6)');
+  const borderCol = TAG_BORDER[block.tag] || p.line;
+  const isPast = block.state === 'past';
+  const isNext = block.state === 'next' || block.hero;
+  const thin = block.height < 34;
+  return (
+    <div
+      onPointerDown={() => setPressed(true)}
+      onPointerUp={() => setPressed(false)}
+      onPointerLeave={() => setPressed(false)}
+      onClick={onClick}
+      style={{
+        position: 'absolute', left: 2, right: 2, top: block.top, height: block.height,
+        background: isNext
+          ? `linear-gradient(135deg, ${p.accent}e0 0%, ${p.accent2}cc 100%)`
+          : tint,
+        backdropFilter: 'blur(18px) saturate(140%)',
+        WebkitBackdropFilter: 'blur(18px) saturate(140%)',
+        color: isNext ? (p.dark ? '#06060f' : '#fff') : (isPast ? p.dim : p.ink),
+        border: `1px solid ${isNext ? 'transparent' : `${borderCol}40`}`,
+        borderLeft: isNext ? 'none' : `2px solid ${borderCol}`,
+        borderRadius: 10,
+        padding: thin ? '2px 6px' : '5px 7px',
+        fontSize: 10,
+        fontWeight: 500,
+        overflow: 'hidden',
+        cursor: block.id ? 'pointer' : 'default',
+        transform: pressed ? 'scale(0.96)' : 'scale(1)',
+        transition: 'transform 140ms ease',
+        boxShadow: isNext
+          ? `0 0 10px ${p.nowGlow}, inset 0 1px 0 rgba(255,255,255,0.15)`
+          : `inset 0 1px 0 rgba(255,255,255,0.05)`,
+        opacity: isPast ? 0.78 : 1,
+        textDecoration: isPast ? 'line-through' : 'none',
+        textDecorationThickness: '0.5px',
+      }}>
+      <div style={{
+        fontStyle: isNext ? 'italic' : 'normal',
+        fontFamily: isNext ? "'Fraunces', serif" : "'Inter', sans-serif",
+        fontSize: isNext ? 11 : 10,
+        fontWeight: isNext ? 500 : 500,
+      }}>{block.title}</div>
+      {!thin && block.tag && !isNext && (
+        <div style={{
+          fontSize: 8, letterSpacing: 1.2, fontWeight: 600,
+          marginTop: 2, opacity: 0.7,
+        }}>{block.tag}</div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// TODOS
+// ─────────────────────────────────────────────────────────────
+function StTodos({ p, todos, onToggle }) {
+  const open = todos.filter(t => !t.done);
+  const done = todos.filter(t => t.done);
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', color: p.ink }}>
+      <div style={{ padding: '32px 22px 14px' }}>
+        <div style={{
+          fontSize: 10, letterSpacing: 3, color: p.subtle, fontWeight: 500,
+          textTransform: 'uppercase',
+        }}>Notes to self</div>
+        <div style={{
+          fontFamily: "'Fraunces', serif",
+          fontSize: 36, fontWeight: 400, letterSpacing: -0.8, marginTop: 6,
+          fontStyle: 'italic',
+        }}>Wishlist</div>
+      </div>
+      <div style={{ flex: 1, overflow: 'auto', padding: '4px 22px 20px' }}>
+        {open.map(t => (
+          <TodoRow key={t.id} todo={t} p={p} onToggle={() => onToggle(t.id)}/>
+        ))}
+        {done.length > 0 && (
+          <div style={{
+            fontSize: 10, letterSpacing: 2, color: p.subtle, fontWeight: 600,
+            textTransform: 'uppercase', marginTop: 22, marginBottom: 6,
+          }}>Done</div>
+        )}
+        {done.map(t => (
+          <TodoRow key={t.id} todo={t} p={p} onToggle={() => onToggle(t.id)}/>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TodoRow({ todo, p, onToggle }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 0', borderBottom: `1px solid ${p.line}`,
+    }}>
+      <div
+        onClick={onToggle}
+        style={{
+          width: 18, height: 18, borderRadius: '50%',
+          border: `1px solid ${p.accent}`,
+          background: todo.done ? p.accent : 'transparent',
+          cursor: 'pointer', flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: p.dark ? '#06060f' : '#fff', fontSize: 11, fontWeight: 700,
+        }}>{todo.done ? '✓' : ''}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 14,
+          color: todo.done ? p.dim : p.ink,
+          textDecoration: todo.done ? 'line-through' : 'none',
+          textDecorationThickness: '0.5px',
+        }}>{todo.title}</div>
+        {todo.note && (
+          <div style={{ fontSize: 11, color: p.subtle, marginTop: 2 }}>{todo.note}</div>
+        )}
+      </div>
+      <div style={{ fontSize: 10, color: p.subtle, letterSpacing: 0.5, flexShrink: 0 }}>{todo.due}</div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// SETTINGS — palette picker + theme exit
+// ─────────────────────────────────────────────────────────────
+function StSettings({ p, paletteKey, onPaletteChange }) {
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', color: p.ink }}>
+      <div style={{ padding: '32px 22px 14px' }}>
+        <div style={{
+          fontSize: 10, letterSpacing: 3, color: p.subtle, fontWeight: 500,
+          textTransform: 'uppercase',
+        }}>Ambience</div>
+        <div style={{
+          fontFamily: "'Fraunces', serif",
+          fontSize: 36, fontWeight: 400, letterSpacing: -0.8, marginTop: 6,
+          fontStyle: 'italic',
+        }}>Settings</div>
+      </div>
+      <div style={{ flex: 1, overflow: 'auto', padding: '4px 22px 20px' }}>
+        <div style={{
+          fontSize: 10, letterSpacing: 2, color: p.subtle, fontWeight: 600,
+          textTransform: 'uppercase', marginTop: 6, marginBottom: 10,
+        }}>Palette</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {Object.entries(StarlightPalettes).map(([key, pal]) => {
+            const active = key === paletteKey;
+            return (
+              <div
+                key={key}
+                onClick={() => onPaletteChange(key)}
+                style={{
+                  padding: '14px 14px 16px',
+                  borderRadius: 14,
+                  cursor: 'pointer',
+                  background: pal.bgGrad,
+                  border: `1px solid ${active ? p.accent : p.line}`,
+                  position: 'relative', overflow: 'hidden',
+                  boxShadow: active ? `0 0 16px ${p.nowGlow}` : 'none',
+                }}>
+                {/* micro-starfield preview */}
+                {pal.dark && Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} style={{
+                    position: 'absolute',
+                    top: `${(i * 37) % 100}%`, left: `${(i * 53) % 100}%`,
+                    width: 1.5, height: 1.5, borderRadius: '50%',
+                    background: pal.star, opacity: 0.6,
+                  }}/>
+                ))}
+                <div style={{ position: 'relative' }}>
+                  <div style={{
+                    fontFamily: "'Fraunces', serif", fontStyle: 'italic',
+                    fontSize: 18, color: pal.ink, fontWeight: 500,
+                  }}>{pal.name}</div>
+                  <div style={{
+                    fontSize: 10, letterSpacing: 1.5, color: pal.subtle,
+                    marginTop: 2, textTransform: 'uppercase',
+                  }}>{pal.sub}</div>
+                  <div style={{ display: 'flex', gap: 4, marginTop: 10 }}>
+                    <div style={{ width: 14, height: 14, borderRadius: '50%', background: pal.accent }}/>
+                    <div style={{ width: 14, height: 14, borderRadius: '50%', background: pal.accent2 }}/>
+                    <div style={{ width: 14, height: 14, borderRadius: '50%', background: pal.ink, opacity: 0.3 }}/>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{
+          fontSize: 10, letterSpacing: 2, color: p.subtle, fontWeight: 600,
+          textTransform: 'uppercase', marginTop: 24, marginBottom: 10,
+        }}>Theme</div>
+        <a href="主题01-Minimal.html" style={{
+          display: 'block', padding: '14px 16px',
+          border: `1px solid ${p.line}`, borderRadius: 14,
+          color: p.ink, textDecoration: 'none',
+          background: p.panel,
+          backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+        }}>
+          <div style={{ fontSize: 11, letterSpacing: 2, color: p.subtle, fontWeight: 600, textTransform: 'uppercase' }}>Switch</div>
+          <div style={{ fontFamily: "'Fraunces', serif", fontStyle: 'italic', fontSize: 18, marginTop: 2 }}>
+            Minimal
+          </div>
+          <div style={{ fontSize: 11, color: p.subtle, marginTop: 2 }}>直角、Inter、黑白极简</div>
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// TAB BAR
+// ─────────────────────────────────────────────────────────────
+function StTabBar({ p, tab, setTab, onAdd }) {
+  return (
+    <div style={{
+      height: 60,
+      borderTop: `1px solid ${p.line}`,
+      background: p.dark ? 'rgba(10,6,32,0.6)' : 'rgba(255,255,255,0.55)',
+      backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+      display: 'flex', alignItems: 'center', padding: '0 16px',
+      position: 'relative', zIndex: 3,
+    }}>
+      <div style={{ flex: 1, display: 'flex', gap: 14 }}>
+        <TabBtn label="TODAY" active={tab === 'today'} onClick={() => setTab('today')} p={p}/>
+        <TabBtn label="WEEK" active={tab === 'week'} onClick={() => setTab('week')} p={p}/>
+        <TabBtn label="TODOS" active={tab === 'todos'} onClick={() => setTab('todos')} p={p}/>
+        <TabBtn label="SET" active={tab === 'settings'} onClick={() => setTab('settings')} p={p}/>
+      </div>
+      <div
+        onClick={onAdd}
+        style={{
+          width: 40, height: 40, borderRadius: '50%',
+          background: p.accent,
+          color: p.dark ? '#06060f' : '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 22, fontWeight: 300, cursor: 'pointer',
+          boxShadow: `0 0 16px ${p.nowGlow}`,
+          fontFamily: "'Fraunces', serif",
+        }}>+</div>
+    </div>
+  );
+}
+
+function TabBtn({ label, active, onClick, p }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        fontSize: 10, letterSpacing: 1.8, fontWeight: 600,
+        color: active ? p.accent : p.dim,
+        paddingBottom: 4,
+        borderBottom: active ? `1px solid ${p.accent}` : '1px solid transparent',
+        cursor: 'pointer', transition: 'color 200ms ease',
+      }}>{label}</div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// EVENT SHEET
+// ─────────────────────────────────────────────────────────────
+function StEventSheet({ p, event, isNew, onClose }) {
+  const open = event !== null || isNew;
+  const e = event || { t: '—', end: '—', title: '新建事件', tag: 'WORK', loc: '—' };
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, zIndex: 20,
+      pointerEvents: open ? 'auto' : 'none',
+    }}>
+      <div onClick={onClose} style={{
+        position: 'absolute', inset: 0, background: p.sheetScrim,
+        opacity: open ? 1 : 0, transition: 'opacity 240ms ease',
+        backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+      }}/>
+      <div style={{
+        position: 'absolute', left: 8, right: 8, bottom: 8,
+        background: p.dark
+          ? 'linear-gradient(180deg, rgba(40,30,70,0.72) 0%, rgba(20,14,42,0.80) 100%)'
+          : 'linear-gradient(180deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.65) 100%)',
+        backdropFilter: 'blur(28px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(28px) saturate(160%)',
+        color: p.ink,
+        padding: '24px 22px 26px',
+        borderRadius: 28,
+        border: `1px solid ${p.dark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.6)'}`,
+        transform: open ? 'translateY(0)' : 'translateY(120%)',
+        transition: 'transform 380ms cubic-bezier(.2,.8,.2,1)',
+        maxHeight: '88%', overflow: 'auto',
+        boxShadow: p.dark
+          ? '0 -20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)'
+          : '0 -20px 60px rgba(44,31,72,0.25), inset 0 1px 0 rgba(255,255,255,0.8)',
+      }}>
+        {/* faint inner glow glint on top edge */}
+        <div style={{
+          position: 'absolute', top: 0, left: '15%', right: '15%', height: 1,
+          background: `linear-gradient(90deg, transparent, ${p.dark ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.9)'}, transparent)`,
+          pointerEvents: 'none',
+        }}/>
+        <div style={{
+          fontSize: 10, letterSpacing: 2, color: p.subtle, fontWeight: 600,
+          textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between',
+        }}>
+          <span>{isNew ? 'New · 新建' : e.tag}</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: "'Fraunces', serif" }}>
+            {e.t} – {e.end}
+          </span>
+        </div>
+        <div style={{
+          fontFamily: "'Fraunces', serif", fontStyle: 'italic',
+          fontSize: 32, fontWeight: 400, letterSpacing: -0.7, marginTop: 10,
+          lineHeight: 1.15,
+        }}>{e.title}</div>
+        <div style={{ marginTop: 20, paddingTop: 14, borderTop: `1px solid ${p.line}`,
+          fontSize: 13, color: p.ink }}>
+          <div style={{ display: 'flex', marginBottom: 10 }}>
+            <div style={{ width: 60, fontSize: 10, letterSpacing: 1.8, color: p.subtle, fontWeight: 600, textTransform: 'uppercase' }}>地点</div>
+            <div style={{ flex: 1 }}>{e.loc}</div>
+          </div>
+          <div style={{ display: 'flex', marginBottom: 10 }}>
+            <div style={{ width: 60, fontSize: 10, letterSpacing: 1.8, color: p.subtle, fontWeight: 600, textTransform: 'uppercase' }}>标签</div>
+            <div style={{ flex: 1 }}>{e.tag}</div>
+          </div>
+          <div style={{ display: 'flex', marginBottom: 10 }}>
+            <div style={{ width: 60, fontSize: 10, letterSpacing: 1.8, color: p.subtle, fontWeight: 600, textTransform: 'uppercase' }}>备注</div>
+            <div style={{ flex: 1, color: p.subtle, fontStyle: 'italic' }}>—</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+          <button onClick={onClose} style={{
+            flex: 1, padding: 14, borderRadius: 999,
+            background: 'transparent', color: p.ink,
+            border: `1px solid ${p.line}`,
+            fontSize: 11, letterSpacing: 2, fontWeight: 600, textTransform: 'uppercase',
+            fontFamily: 'inherit', cursor: 'pointer',
+          }}>Close</button>
+          <button style={{
+            flex: 2, padding: 14, borderRadius: 999,
+            background: p.accent, color: p.dark ? '#06060f' : '#fff',
+            border: 'none',
+            fontSize: 11, letterSpacing: 2, fontWeight: 600, textTransform: 'uppercase',
+            fontFamily: 'inherit', cursor: 'pointer',
+            boxShadow: `0 0 16px ${p.nowGlow}`,
+          }}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// RATING SHEET
+// ─────────────────────────────────────────────────────────────
+function StRatingSheet({ p, event, existing, onClose, onSave }) {
+  const open = event !== null;
+  const [eff, setEff] = React.useState(existing?.efficiency ?? 0);
+  const [mood, setMood] = React.useState(existing?.mood ?? 0);
+  const [note, setNote] = React.useState(existing?.reflection ?? '');
+  React.useEffect(() => {
+    if (open) {
+      setEff(existing?.efficiency ?? 0);
+      setMood(existing?.mood ?? 0);
+      setNote(existing?.reflection ?? '');
+    }
+  }, [open, event?.id]);
+  const canSave = eff > 0 && mood > 0;
+
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, zIndex: 25,
+      pointerEvents: open ? 'auto' : 'none',
+    }}>
+      <div onClick={onClose} style={{
+        position: 'absolute', inset: 0, background: p.sheetScrim,
+        opacity: open ? 1 : 0, transition: 'opacity 240ms ease',
+        backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+      }}/>
+      <div style={{
+        position: 'absolute', left: 8, right: 8, bottom: 8,
+        background: p.dark
+          ? 'linear-gradient(180deg, rgba(40,30,70,0.72) 0%, rgba(20,14,42,0.80) 100%)'
+          : 'linear-gradient(180deg, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.65) 100%)',
+        backdropFilter: 'blur(28px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(28px) saturate(160%)',
+        color: p.ink,
+        padding: '24px 22px 26px',
+        borderRadius: 28,
+        border: `1px solid ${p.dark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.6)'}`,
+        transform: open ? 'translateY(0)' : 'translateY(120%)',
+        transition: 'transform 380ms cubic-bezier(.2,.8,.2,1)',
+        maxHeight: '88%', overflow: 'auto',
+        boxShadow: p.dark
+          ? '0 -20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)'
+          : '0 -20px 60px rgba(44,31,72,0.25), inset 0 1px 0 rgba(255,255,255,0.8)',
+      }}>
+        <div style={{
+          position: 'absolute', top: 0, left: '15%', right: '15%', height: 1,
+          background: `linear-gradient(90deg, transparent, ${p.dark ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.9)'}, transparent)`,
+          pointerEvents: 'none',
+        }}/>
+        <div style={{
+          fontSize: 10, letterSpacing: 2, color: p.subtle, fontWeight: 600,
+          textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between',
+        }}>
+          <span>Rate · {event?.tag}</span>
+          <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: "'Fraunces', serif" }}>
+            {event?.t} – {event?.end}
+          </span>
+        </div>
+        <div style={{
+          fontFamily: "'Fraunces', serif", fontStyle: 'italic',
+          fontSize: 30, fontWeight: 400, letterSpacing: -0.7, marginTop: 10,
+        }}>{event?.title}</div>
+
+        {/* Efficiency */}
+        <div style={{ marginTop: 22, paddingTop: 14, borderTop: `1px solid ${p.line}` }}>
+          <div style={{
+            fontSize: 10, letterSpacing: 2, color: p.subtle, fontWeight: 600,
+            textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between',
+          }}>
+            <span>Efficiency · 效率</span>
+            <span style={{ color: eff > 0 ? p.accent : p.dim,
+              fontFamily: "'Fraunces', serif", fontVariantNumeric: 'tabular-nums' }}>
+              {eff || '—'}/5
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 6, marginTop: 12, height: 42 }}>
+            {[1, 2, 3, 4, 5].map(n => (
+              <div key={n} onClick={() => setEff(n)} style={{
+                flex: 1, cursor: 'pointer',
+                display: 'flex', alignItems: 'flex-end',
+              }}>
+                <div style={{
+                  width: '100%', height: `${20 + n * 16}%`,
+                  background: eff >= n ? p.accent : 'transparent',
+                  border: `1px solid ${eff >= n ? p.accent : p.line}`,
+                  borderRadius: 6,
+                  transition: 'all 180ms ease',
+                  boxShadow: eff >= n ? `0 0 8px ${p.nowGlow}` : 'none',
+                }}/>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Mood */}
+        <div style={{ marginTop: 20, paddingTop: 14, borderTop: `1px solid ${p.line}` }}>
+          <div style={{
+            fontSize: 10, letterSpacing: 2, color: p.subtle, fontWeight: 600,
+            textTransform: 'uppercase', display: 'flex', justifyContent: 'space-between',
+          }}>
+            <span>Mood · 心情</span>
+            <span style={{ color: mood > 0 ? p.accent : p.dim }}>
+              {mood > 0 ? MOOD_LABELS[mood - 1] : '—'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+            {MOOD_LABELS.map((label, i) => {
+              const n = i + 1;
+              const sel = mood === n;
+              return (
+                <div key={n} onClick={() => setMood(n)} style={{
+                  flex: 1, cursor: 'pointer', height: 60,
+                  background: sel ? p.accent : 'transparent',
+                  color: sel ? (p.dark ? '#06060f' : '#fff') : p.ink,
+                  border: `1px solid ${sel ? p.accent : p.line}`,
+                  borderRadius: 10,
+                  transition: 'all 200ms ease',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  gap: 2, overflow: 'hidden',
+                  boxShadow: sel ? `0 0 10px ${p.nowGlow}` : 'none',
+                }}>
+                  <div style={{
+                    fontSize: sel ? 12 : 16,
+                    fontFamily: sel ? 'ui-monospace, SFMono-Regular, Menlo, monospace' : "'Fraunces', serif",
+                    fontWeight: sel ? 400 : 500, lineHeight: 1, whiteSpace: 'nowrap',
+                    fontStyle: sel ? 'normal' : 'italic',
+                  }}>{sel ? MOOD_FACES[i] : label}</div>
+                  {sel && (
+                    <div style={{ fontSize: 9, letterSpacing: 1.8, fontWeight: 600, opacity: 0.8, textTransform: 'uppercase', lineHeight: 1 }}>
+                      {label}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Reflection */}
+        <div style={{ marginTop: 20, paddingTop: 14, borderTop: `1px solid ${p.line}` }}>
+          <div style={{
+            fontSize: 10, letterSpacing: 2, color: p.subtle, fontWeight: 600,
+            textTransform: 'uppercase', marginBottom: 8,
+          }}>Reflection · 反思</div>
+          <textarea
+            value={note} onChange={e => setNote(e.target.value)}
+            placeholder="一两行就够…"
+            style={{
+              width: '100%', minHeight: 72, resize: 'none',
+              background: 'transparent', border: `1px solid ${p.line}`,
+              borderRadius: 10,
+              padding: 12,
+              fontFamily: "'Fraunces', serif", fontStyle: 'italic',
+              fontSize: 14, color: p.ink, outline: 'none', boxSizing: 'border-box',
+            }}/>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
+          <button onClick={onClose} style={{
+            flex: 1, padding: 14, borderRadius: 999,
+            background: 'transparent', color: p.ink,
+            border: `1px solid ${p.line}`,
+            fontSize: 11, letterSpacing: 2, fontWeight: 600, textTransform: 'uppercase',
+            fontFamily: 'inherit', cursor: 'pointer',
+          }}>Skip</button>
+          <button
+            onClick={() => canSave && onSave({ efficiency: eff, mood, reflection: note })}
+            disabled={!canSave}
+            style={{
+              flex: 2, padding: 14, borderRadius: 999,
+              background: canSave ? p.accent : p.panel,
+              color: canSave ? (p.dark ? '#06060f' : '#fff') : p.dim,
+              border: 'none',
+              fontSize: 11, letterSpacing: 2, fontWeight: 600, textTransform: 'uppercase',
+              fontFamily: 'inherit', cursor: canSave ? 'pointer' : 'default',
+              boxShadow: canSave ? `0 0 16px ${p.nowGlow}` : 'none',
+            }}>Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Root
+// ─────────────────────────────────────────────────────────────
+function Root() {
+  const [paletteKey, setPaletteKey] = React.useState(() => {
+    try {
+      const v = localStorage.getItem('starlight_palette');
+      if (v && StarlightPalettes[v]) return v;
+    } catch {}
+    return 'nebula';
+  });
+  React.useEffect(() => {
+    try { localStorage.setItem('starlight_palette', paletteKey); } catch {}
+    document.body.style.background = '#04050f';
+  }, [paletteKey]);
+  return <StarlightApp paletteKey={paletteKey} setPaletteKey={setPaletteKey}/>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
+</script>
+</body>
+</html>
