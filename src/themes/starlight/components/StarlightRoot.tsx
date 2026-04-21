@@ -2,44 +2,35 @@ import React from 'react';
 import { Alert, Animated, StyleSheet, View } from 'react-native';
 import { useTheme, useThemeSettings } from '../../../theme/ThemeContext';
 import { useEvents, useSemesterConfig } from '../../../features/schedule';
-import { type CategoryKey, type ScheduleEvent } from '../../../features/schedule/types';
 import { expandRepeatingEvents } from '../../../features/schedule/domain/repeat';
-import { getSemesterWeek, getWeekStart } from '../../../features/schedule/domain/calendar';
 import { useRatings } from '../../../features/rating';
-import type { TimeSlotRating } from '../../../features/rating/types';
 import { useTodos } from '../../../features/todo';
 import { toggleTodoComplete } from '../../../features/todo/services/todo.service';
 import type { TodoItem } from '../../../features/todo/types';
-import type { RouteName, ThemePalette } from '../../types';
-import { starlightNebulaPalette, STARLIGHT_NEBULA_COLORS } from '../palettes/nebula';
-import type { StarlightPaletteColors } from './starlightTypes';
-import {
-  StarlightBackground,
-  StarlightTabBar,
-  type StarlightTab,
-  type StarlightTimelineEvent,
-} from './parts';
+import { getSemesterWeek, getWeekStart } from '../../../features/schedule/domain/calendar';
+import type { RouteName } from '../../types';
+import { starlightPackage } from '../package';
+import { StarEventSheet } from './StarEventSheet';
 import { StarHome } from './StarHome';
 import { StarMatrix } from './StarMatrix';
-import { StarEventSheet } from './StarEventSheet';
-import { StarRatingSheet, STARLIGHT_MOOD_LABELS, type StarRatingSavePayload } from './StarRatingSheet';
+import { StarRatingSheet } from './StarRatingSheet';
 import { StarSettings } from './StarSettings';
-import { StarTodoSheet } from './StarTodoSheet';
 import { StarTodos } from './StarTodos';
-
-type StarlightEvent = ScheduleEvent & { state: StarlightTimelineEvent['state'] };
-
-type RatingsByEventId = Record<string, TimeSlotRating>;
+import { StarTodoSheet } from './StarTodoSheet';
+import {
+  STARLIGHT_COLORS_BY_ID,
+  MOOD_LABELS,
+  StarlightEvent,
+  StarlightTab,
+  RatingsByEventId,
+} from './starlightTypes';
+import { StarlightTabBar } from './parts/StarlightTabBar';
+import { StarlightBackground } from './parts/StarlightBackground';
 
 type TodoSheetState =
   | { mode: 'create' }
   | { mode: 'edit'; todo: TodoItem }
   | null;
-
-const STARLIGHT_PALETTES: ThemePalette[] = [starlightNebulaPalette];
-const STARLIGHT_COLORS_BY_ID: Record<string, StarlightPaletteColors> = {
-  [starlightNebulaPalette.id]: STARLIGHT_NEBULA_COLORS,
-};
 
 function routeToTab(route: RouteName): StarlightTab {
   if (route === 'matrix') return 'week';
@@ -48,13 +39,14 @@ function routeToTab(route: RouteName): StarlightTab {
   return 'today';
 }
 
-function sameDay(event: Pick<ScheduleEvent, 'start_time' | 'end_time'>, dayStart: Date, nextDayStart: Date): boolean {
+function sameDay(event: Pick<StarlightEvent, 'start_time' | 'end_time'>, dayStart: Date, nextDayStart: Date): boolean {
   const start = new Date(event.start_time).getTime();
   const end = new Date(event.end_time).getTime();
   return start < nextDayStart.getTime() && end > dayStart.getTime();
 }
 
-function withState(events: ScheduleEvent[], nowMs: number): StarlightEvent[] {
+export function withState(events: StarlightEvent[], nowMs: number): StarlightEvent[] {
+  // Strict > so an event whose start_time === now lands in 'now' (in progress), not 'next'.
   const upcoming = events.find((event) => new Date(event.start_time).getTime() > nowMs);
   return events.map((event) => {
     const start = new Date(event.start_time).getTime();
@@ -66,7 +58,7 @@ function withState(events: ScheduleEvent[], nowMs: number): StarlightEvent[] {
   });
 }
 
-function latestRatingsByEventId(ratings: TimeSlotRating[]): RatingsByEventId {
+function latestRatingsByEventId(ratings: ReturnType<typeof useRatings>['ratings']): RatingsByEventId {
   return ratings.reduce<RatingsByEventId>((acc, rating) => {
     if (!rating.linked_event_id) return acc;
     const current = acc[rating.linked_event_id];
@@ -87,8 +79,8 @@ function nudgeCopy(event: StarlightEvent | null): string {
 
 export function StarlightRoot({ route }: { route: RouteName }) {
   const theme = useTheme();
-  const { themeName, setThemeName } = useThemeSettings();
-  const p = STARLIGHT_COLORS_BY_ID[theme.id] ?? STARLIGHT_COLORS_BY_ID[themeName] ?? STARLIGHT_NEBULA_COLORS;
+  const { themeName } = useThemeSettings();
+  const p = STARLIGHT_COLORS_BY_ID[theme.id] ?? STARLIGHT_COLORS_BY_ID[themeName] ?? STARLIGHT_COLORS_BY_ID['starlight-nebula'];
   const [tab, setTab] = React.useState<StarlightTab>(() => routeToTab(route));
   const [eventSheetId, setEventSheetId] = React.useState<string | 'new' | null>(null);
   const [ratingTargetId, setRatingTargetId] = React.useState<string | null>(null);
@@ -105,7 +97,6 @@ export function StarlightRoot({ route }: { route: RouteName }) {
   }, [route]);
 
   const now = new Date();
-  const nowMs = now.getTime();
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
   const tomorrowStart = new Date(todayStart);
@@ -119,27 +110,25 @@ export function StarlightRoot({ route }: { route: RouteName }) {
   viewingWeekEnd.setDate(viewingWeekStart.getDate() + 7);
 
   const todayExpandedEvents = React.useMemo(
-    () =>
-      expandRepeatingEvents(events, currentWeekStart, currentWeekEnd).sort(
-        (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
-      ),
+    () => expandRepeatingEvents(events, currentWeekStart, currentWeekEnd).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()) as StarlightEvent[],
     [events, currentWeekStart.toDateString()],
   );
 
   const viewingWeekExpanded = React.useMemo(
-    () =>
-      expandRepeatingEvents(events, viewingWeekStart, viewingWeekEnd).sort(
-        (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
-      ),
+    () => expandRepeatingEvents(events, viewingWeekStart, viewingWeekEnd).sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()) as StarlightEvent[],
     [events, viewingWeekStart.toDateString()],
   );
 
   const todayEvents = React.useMemo(
-    () => withState(todayExpandedEvents.filter((event) => sameDay(event, todayStart, tomorrowStart)), nowMs),
-    [todayExpandedEvents, todayStart.toDateString(), nowMs],
+    () =>
+      withState(
+        todayExpandedEvents.filter((event) => sameDay(event, todayStart, tomorrowStart)),
+        now.getTime(),
+      ),
+    [todayExpandedEvents, todayStart.toDateString(), now.getTime()],
   );
 
-  const matrixEvents = React.useMemo(() => withState(viewingWeekExpanded, nowMs), [viewingWeekExpanded, nowMs]);
+  const matrixEvents = React.useMemo(() => withState(viewingWeekExpanded, now.getTime()), [viewingWeekExpanded, now.getTime()]);
   const ratingsByEventId = React.useMemo(() => latestRatingsByEventId(ratingsApi.ratings), [ratingsApi.ratings]);
   const semesterWeek = semester ? getSemesterWeek(semester.start_date, now) : null;
 
@@ -154,24 +143,18 @@ export function StarlightRoot({ route }: { route: RouteName }) {
         .sort((a, b) => new Date(b.end_time).getTime() - new Date(a.end_time).getTime()),
     [todayEvents, ratingsByEventId, todayStart.getTime(), tomorrowStart.getTime()],
   );
-
   const nudgeEvent = pastUnratedToday[0] && pastUnratedToday[0].id !== dismissedNudgeId ? pastUnratedToday[0] : null;
-  const openTodos = todos.filter((todo) => !todo.is_completed).length;
-  const doneTodos = todos.length - openTodos;
   const categoryByEventId = React.useMemo(() => {
-    const acc: Record<string, CategoryKey> = {};
+    const acc: Record<string, import('../../../features/schedule/types').CategoryKey> = {};
     for (const event of events) acc[event.id] = event.category;
     return acc;
   }, [events]);
-  const findEventById = (id: string): StarlightEvent | null =>
-    matrixEvents.find((event) => event.id === id) ?? todayEvents.find((event) => event.id === id) ?? null;
+  const findEventById = (id: string): StarlightEvent | null => matrixEvents.find((event) => event.id === id) ?? todayEvents.find((event) => event.id === id) ?? null;
   const selectedEvent = eventSheetId && eventSheetId !== 'new' ? findEventById(eventSheetId) : null;
   const ratingTarget = ratingTargetId ? findEventById(ratingTargetId) : null;
   const existingRating = ratingTargetId ? ratingsByEventId[ratingTargetId] : undefined;
-  const todoSheetIsNew = todoSheetState?.mode === 'create';
-  const todoSheetTodo = todoSheetState?.mode === 'edit' ? todoSheetState.todo : null;
 
-  const handleSaveRating = async ({ efficiency, moodIndex, reflection }: StarRatingSavePayload) => {
+  const handleSaveRating = async ({ efficiency, moodIndex, reflection }: { efficiency: 1 | 2 | 3 | 4 | 5; moodIndex: 1 | 2 | 3 | 4 | 5; reflection: string }) => {
     if (!ratingTarget) return;
     try {
       await ratingsApi.save(
@@ -181,7 +164,7 @@ export function StarlightRoot({ route }: { route: RouteName }) {
           linked_event_id: ratingTarget.id,
           efficiency,
           rating: efficiency,
-          mood: STARLIGHT_MOOD_LABELS[moodIndex - 1],
+          mood: MOOD_LABELS[moodIndex - 1],
           reflection,
         },
         existingRating?.id,
@@ -193,6 +176,9 @@ export function StarlightRoot({ route }: { route: RouteName }) {
     }
   };
 
+  const todoSheetIsNew = todoSheetState?.mode === 'create';
+  const todoSheetTodo = todoSheetState?.mode === 'edit' ? todoSheetState.todo : null;
+
   const screens: Array<{ key: StarlightTab; element: React.ReactNode }> = [
     {
       key: 'today',
@@ -201,14 +187,13 @@ export function StarlightRoot({ route }: { route: RouteName }) {
           p={p}
           events={todayEvents}
           todos={todos}
+          ratings={ratingsApi.ratings}
           ratingsByEventId={ratingsByEventId}
           categoryByEventId={categoryByEventId}
           semesterWeek={semesterWeek}
           nudgeEvent={nudgeEvent}
           nudgeText={nudgeCopy(nudgeEvent)}
           unratedCount={pastUnratedToday.length}
-          openTodos={openTodos}
-          doneTodos={doneTodos}
           onOpenEvent={setEventSheetId}
           onRate={setRatingTargetId}
           onDismissNudge={() => setDismissedNudgeId(nudgeEvent?.id ?? null)}
@@ -244,54 +229,34 @@ export function StarlightRoot({ route }: { route: RouteName }) {
         />
       ),
     },
-    {
-      key: 'settings',
-      element: (
-        <StarSettings
-          p={p}
-          paletteId={theme.id}
-          palettes={STARLIGHT_PALETTES}
-          onSelectPalette={setThemeName}
-        />
-      ),
-    },
+    { key: 'settings', element: <StarSettings p={p} paletteId={theme.id} palettes={starlightPackage.palettes} /> },
   ];
 
   return (
-    <StarlightBackground p={p} testID="starlight-root-background">
-      <View style={styles.stack}>
-        {screens.map((screen) => (
-          <Screen key={screen.key} name={screen.key} active={tab === screen.key}>
-            {screen.element}
-          </Screen>
-        ))}
+    <StarlightBackground p={p}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+        <View style={styles.stack}>
+          {screens.map((screen) => (
+            <Screen key={screen.key} active={tab === screen.key}>
+              {screen.element}
+            </Screen>
+          ))}
+        </View>
+        <StarlightTabBar
+          p={p}
+          tab={tab}
+          setTab={setTab}
+          onAdd={() => (tab === 'todos' ? setTodoSheetState({ mode: 'create' }) : setEventSheetId('new'))}
+        />
+        <StarEventSheet p={p} event={selectedEvent} isNew={eventSheetId === 'new'} onClose={() => setEventSheetId(null)} />
+        <StarRatingSheet p={p} event={ratingTarget} existing={existingRating} onClose={() => setRatingTargetId(null)} onSave={(payload) => void handleSaveRating(payload)} />
+        <StarTodoSheet p={p} todo={todoSheetTodo} isNew={todoSheetIsNew} onClose={() => setTodoSheetState(null)} />
       </View>
-      <StarlightTabBar
-        p={p}
-        tab={tab}
-        setTab={setTab}
-        onAdd={() => (tab === 'todos' ? setTodoSheetState({ mode: 'create' }) : setEventSheetId('new'))}
-      />
-      <StarEventSheet
-        p={p}
-        event={selectedEvent}
-        visible={eventSheetId !== null}
-        onClose={() => setEventSheetId(null)}
-        onSave={() => setEventSheetId(null)}
-      />
-      <StarRatingSheet
-        p={p}
-        event={ratingTarget}
-        existing={existingRating}
-        onClose={() => setRatingTargetId(null)}
-        onSave={(payload) => void handleSaveRating(payload)}
-      />
-      <StarTodoSheet p={p} todo={todoSheetTodo} isNew={todoSheetIsNew} onClose={() => setTodoSheetState(null)} />
     </StarlightBackground>
   );
 }
 
-function Screen({ name, active, children }: { name: StarlightTab; active: boolean; children: React.ReactNode }) {
+function Screen({ active, children }: { active: boolean; children: React.ReactNode }) {
   const opacity = React.useRef(new Animated.Value(active ? 1 : 0)).current;
 
   React.useEffect(() => {
@@ -303,18 +268,14 @@ function Screen({ name, active, children }: { name: StarlightTab; active: boolea
   }, [active, opacity]);
 
   return (
-    <Animated.View
-      testID={`starlight-screen-${name}`}
-      accessibilityState={{ selected: active }}
-      pointerEvents={active ? 'auto' : 'none'}
-      style={[styles.screen, { opacity }]}
-    >
+    <Animated.View pointerEvents={active ? 'auto' : 'none'} style={[styles.screen, { opacity }]}>
       {children}
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1, position: 'relative', overflow: 'hidden' },
   stack: { flex: 1, position: 'relative', overflow: 'hidden' },
   screen: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
 });

@@ -4,6 +4,10 @@ import type { ThemePalette } from '../../types';
 import { STARLIGHT_NEBULA_COLORS, starlightNebulaPalette } from '../palettes/nebula';
 import { StarSettings } from './StarSettings';
 
+jest.mock('../../../theme/ThemeContext', () => ({
+  useThemeSettings: () => ({ themeName: 'starlight-nebula', setThemeName: jest.fn() }),
+}));
+
 const duskPalette: ThemePalette = {
   ...starlightNebulaPalette,
   id: 'starlight-dusk',

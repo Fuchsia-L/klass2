@@ -1,8 +1,9 @@
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { TodoItem } from '../../../features/todo/types';
 import type { StarlightPaletteColors } from './starlightTypes';
-import { StarlightTodoRow } from './parts';
 
 type Props = {
   p: StarlightPaletteColors;
@@ -32,12 +33,47 @@ export function StarTodos({ p, todos, onToggle, onOpenTodo }: Props) {
       </View>
 
       <ScrollView testID="starlight-todos" contentContainerStyle={styles.list}>
-        <TodoSection p={p} title="Open" todos={open} onToggle={onToggle} onOpenTodo={onOpenTodo} testID="starlight-todos-open" />
-        <TodoSection p={p} title="Done" todos={done} onToggle={onToggle} onOpenTodo={onOpenTodo} testID="starlight-todos-done" />
+        <TodoSection
+          p={p}
+          title="Open"
+          todos={open}
+          onToggle={onToggle}
+          onOpenTodo={onOpenTodo}
+          testID="starlight-todos-open"
+          spacingTop={0}
+        />
+        <TodoSection
+          p={p}
+          title="Done"
+          todos={done}
+          onToggle={onToggle}
+          onOpenTodo={onOpenTodo}
+          testID="starlight-todos-done"
+          spacingTop={22}
+        />
         {todos.length === 0 ? (
-          <View style={[styles.emptyPanel, { backgroundColor: p.panel, borderColor: p.line }]}>
+          <View style={[styles.emptyPanel, { borderColor: p.line }]}>
+            <BlurView
+              intensity={24}
+              tint={p.dark ? 'dark' : 'light'}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
+            <View
+              pointerEvents="none"
+              style={[StyleSheet.absoluteFill, { backgroundColor: p.panel }]}
+            />
+            <LinearGradient
+              colors={[`${p.accent}1a`, 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
             <Text style={[styles.emptyTitle, { color: p.ink }]}>Clear sky</Text>
-            <Text style={[styles.emptyBody, { color: p.subtle }]}>No tasks are waiting tonight.</Text>
+            <Text style={[styles.emptyBody, { color: p.subtle }]}>
+              No tasks are waiting tonight.
+            </Text>
           </View>
         ) : null}
       </ScrollView>
@@ -45,45 +81,111 @@ export function StarTodos({ p, todos, onToggle, onOpenTodo }: Props) {
   );
 }
 
-function TodoSection({
-  p,
-  title,
-  todos,
-  onToggle,
-  onOpenTodo,
-  testID,
-}: {
+type SectionProps = {
   p: StarlightPaletteColors;
   title: string;
   todos: TodoItem[];
   onToggle: (id: string) => void;
   onOpenTodo: (todo: TodoItem) => void;
   testID: string;
-}) {
+  spacingTop: number;
+};
+
+function TodoSection({ p, title, todos, onToggle, onOpenTodo, testID, spacingTop }: SectionProps) {
   if (todos.length === 0) return null;
 
   return (
-    <View testID={testID} style={styles.section}>
+    <View testID={testID} style={[styles.section, { marginTop: spacingTop }]}>
       <Text style={[styles.sectionTitle, { color: p.subtle }]}>{title}</Text>
-      <View style={[styles.sectionPanel, { backgroundColor: p.panel, borderColor: p.line }]}>
-        {todos.map((todo) => (
-          <StarlightTodoRow
+      <View style={styles.rows}>
+        {todos.map((todo, index) => (
+          <TodoLine
             key={todo.id}
             p={p}
-            todo={{
-              id: todo.id,
-              title: todo.title,
-              dueLabel: todoDueLabel(todo),
-              note: todo.notes,
-              done: todo.is_completed,
-            }}
+            todo={todo}
             onToggle={() => onToggle(todo.id)}
             onOpen={() => onOpenTodo(todo)}
             testID={`starlight-todo-${todo.id}`}
+            isLast={index === todos.length - 1}
           />
         ))}
       </View>
     </View>
+  );
+}
+
+type LineProps = {
+  p: StarlightPaletteColors;
+  todo: TodoItem;
+  onToggle: () => void;
+  onOpen: () => void;
+  testID: string;
+  isLast: boolean;
+};
+
+function TodoLine({ p, todo, onToggle, onOpen, testID, isLast }: LineProps) {
+  const dueLabel = todoDueLabel(todo);
+  const hasNote = !!(todo.notes && todo.notes.trim().length > 0);
+
+  return (
+    <Pressable
+      testID={testID}
+      onPress={onOpen}
+      style={({ pressed }) => [
+        styles.row,
+        {
+          borderBottomColor: p.line,
+          borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth > 0 ? 1 : 1,
+          backgroundColor: pressed ? p.panel : 'transparent',
+        },
+      ]}
+    >
+      <Pressable
+        testID="starlight-todo-toggle"
+        onPress={(e) => {
+          e?.stopPropagation?.();
+          onToggle();
+        }}
+        hitSlop={8}
+        style={[
+          styles.check,
+          {
+            borderColor: p.accent,
+            backgroundColor: todo.is_completed ? p.accent : 'transparent',
+            shadowColor: p.accent,
+            shadowOpacity: todo.is_completed ? 0.75 : 0,
+            shadowRadius: todo.is_completed ? 6 : 0,
+            shadowOffset: { width: 0, height: 0 },
+            elevation: todo.is_completed ? 3 : 0,
+          },
+        ]}
+      >
+        <Text style={[styles.checkText, { color: p.dark ? '#06060f' : '#ffffff' }]}>
+          {todo.is_completed ? '✓' : ''}
+        </Text>
+      </Pressable>
+      <View style={styles.body}>
+        <Text
+          style={[
+            styles.titleText,
+            {
+              color: todo.is_completed ? p.dim : p.ink,
+              textDecorationLine: todo.is_completed ? 'line-through' : 'none',
+              textDecorationColor: p.dim,
+            },
+          ]}
+          numberOfLines={1}
+        >
+          {todo.title || '无标题'}
+        </Text>
+        {hasNote ? (
+          <Text style={[styles.note, { color: p.subtle }]} numberOfLines={1}>
+            {todo.notes}
+          </Text>
+        ) : null}
+      </View>
+      <Text style={[styles.due, { color: p.subtle }]}>{dueLabel}</Text>
+    </Pressable>
   );
 }
 
@@ -97,6 +199,7 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   kicker: {
+    fontFamily: 'Inter-Medium',
     fontSize: 10,
     letterSpacing: 3,
     fontWeight: '500',
@@ -107,10 +210,12 @@ const styles = StyleSheet.create({
     fontFamily: 'Fraunces-Regular',
     fontSize: 36,
     lineHeight: 42,
+    letterSpacing: -0.8,
     fontStyle: 'italic',
   },
   counts: {
     marginTop: 6,
+    fontFamily: 'Inter-Medium',
     fontSize: 11,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
@@ -118,37 +223,80 @@ const styles = StyleSheet.create({
   list: {
     paddingHorizontal: 22,
     paddingTop: 4,
-    paddingBottom: 36,
+    paddingBottom: 40,
   },
   section: {
-    marginBottom: 22,
+    // spacingTop applied inline for top separation between Open and Done
   },
   sectionTitle: {
     marginBottom: 6,
+    fontFamily: 'Inter-SemiBold',
     fontSize: 10,
     letterSpacing: 2,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
-  sectionPanel: {
+  rows: {
+    // flat list — rows carry their own bottom hairline
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  check: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  checkText: {
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 13,
+  },
+  body: {
+    flex: 1,
+    minWidth: 0,
+  },
+  titleText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  note: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  due: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 10,
+    letterSpacing: 1.2,
+    flexShrink: 0,
+    textTransform: 'uppercase',
   },
   emptyPanel: {
-    marginTop: 8,
+    marginTop: 18,
     borderWidth: 1,
     borderRadius: 18,
-    padding: 18,
+    padding: 20,
+    overflow: 'hidden',
   },
   emptyTitle: {
     fontFamily: 'Fraunces-SemiBold',
-    fontSize: 20,
+    fontSize: 22,
+    lineHeight: 26,
     fontStyle: 'italic',
   },
   emptyBody: {
-    marginTop: 4,
+    marginTop: 6,
+    fontFamily: 'Inter-Regular',
     fontSize: 12,
     lineHeight: 18,
   },

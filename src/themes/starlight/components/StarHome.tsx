@@ -1,3 +1,5 @@
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from 'react-native';
 import type { TimeSlotRating } from '../../../features/rating/types';
@@ -16,20 +18,21 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 export type StarEvent = ScheduleEvent & { state: StarlightTimelineEvent['state'] };
-export type StarRatingsByEventId = Record<string, TimeSlotRating>;
+export type StarRatingsByEventId = Record<string, TimeSlotRating | undefined>;
 
 type Props = {
   p: StarlightPaletteColors;
   events: StarEvent[];
   todos: TodoItem[];
+  ratings?: TimeSlotRating[];
   ratingsByEventId: StarRatingsByEventId;
   categoryByEventId: Record<string, CategoryKey>;
   semesterWeek: number | null;
   nudgeEvent: StarEvent | null;
   nudgeText: string;
   unratedCount: number;
-  openTodos: number;
-  doneTodos: number;
+  openTodos?: number;
+  doneTodos?: number;
   onOpenEvent: (eventId: string) => void;
   onRate: (eventId: string) => void;
   onDismissNudge: () => void;
@@ -39,6 +42,9 @@ type Props = {
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// HTML 原型硬编码色值（事后 cleanup 进 palette）
+const DARK_INK_ON_ACCENT = '#06060f';
 
 function formatTime(iso: string): string {
   const date = new Date(iso);
@@ -87,11 +93,15 @@ export function StarHome({
   const nextIndex = events.findIndex((event) => event.state === 'next');
   const openTodoPreview = todos.filter((todo) => !todo.is_completed).slice(0, 4);
   const firstUnrated = events.find((event) => event.state === 'past' && !ratingsByEventId[event.id]);
+  const openTodosCount = openTodos ?? todos.filter((todo) => !todo.is_completed).length;
+  const doneTodosCount = doneTodos ?? todos.filter((todo) => todo.is_completed).length;
 
   const toggleExpanded = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setTodoExpanded((value) => !value);
   };
+
+  const accentInk = p.dark ? DARK_INK_ON_ACCENT : '#ffffff';
 
   return (
     <View testID="starlight-home" style={styles.container}>
@@ -110,19 +120,36 @@ export function StarHome({
         </View>
       </View>
 
+      {/* Todo summary — glassy pill with BlurView backdrop */}
       <View style={styles.todoPad}>
-        <Pressable
-          testID="starlight-home-todo-summary"
-          onPress={toggleExpanded}
-          style={[styles.todoSummaryCard, { backgroundColor: p.panel, borderColor: p.line }]}
-        >
-          <Text style={[styles.todoLabel, { color: p.subtle }]}>Todos</Text>
-          <View style={styles.todoSummaryText}>
-            <Text style={[styles.todoOpen, { color: p.ink }]}>{openTodos}</Text>
-            <Text style={[styles.todoSub, { color: p.subtle }]}>待办 · {doneTodos} 已完成</Text>
-          </View>
-          <Text style={[styles.chevron, { color: p.subtle, transform: [{ rotate: todoExpanded ? '90deg' : '0deg' }] }]}>▸</Text>
-        </Pressable>
+        <View style={[styles.glassCard, { borderColor: p.line }]}>
+          <BlurView
+            intensity={28}
+            tint={p.dark ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: p.panel }]} />
+          <Pressable
+            testID="starlight-home-todo-summary"
+            onPress={toggleExpanded}
+            style={styles.todoSummaryInner}
+          >
+            <Text style={[styles.todoLabel, { color: p.subtle }]}>Todos</Text>
+            <View style={styles.todoSummaryText}>
+              <Text style={[styles.todoOpen, { color: p.ink }]}>{openTodosCount}</Text>
+              <Text style={[styles.todoSub, { color: p.subtle }]}>待办 · {doneTodosCount} 已完成</Text>
+            </View>
+            <Text
+              style={[
+                styles.chevron,
+                { color: p.subtle, transform: [{ rotate: todoExpanded ? '90deg' : '0deg' }] },
+              ]}
+            >
+              ▸
+            </Text>
+          </Pressable>
+        </View>
         {todoExpanded ? (
           <View testID="starlight-home-todo-preview" style={styles.todoPreview}>
             {openTodoPreview.length > 0 ? (
@@ -131,7 +158,13 @@ export function StarHome({
                   <Pressable
                     testID={`starlight-home-todo-toggle-${todo.id}`}
                     onPress={() => onToggleTodo(todo.id)}
-                    style={[styles.previewCheck, { borderColor: p.accent }]}
+                    style={[
+                      styles.previewCheck,
+                      {
+                        borderColor: p.accent,
+                        shadowColor: p.accent,
+                      },
+                    ]}
                   />
                   <Text style={[styles.previewTitle, { color: p.ink }]} numberOfLines={1}>
                     {todo.title || '无标题'}
@@ -149,17 +182,45 @@ export function StarHome({
         ) : null}
       </View>
 
+      {/* Unrated nudge — glassy + accent border */}
       {nudgeEvent ? (
-        <View testID="starlight-rating-nudge" style={[styles.nudge, { backgroundColor: p.panel, borderColor: p.accent }]}>
-          <View style={[styles.nudgeDot, { backgroundColor: p.accent, shadowColor: p.accent }]} />
+        <View
+          testID="starlight-rating-nudge"
+          style={[styles.nudge, { borderColor: p.accent, shadowColor: p.accent }]}
+        >
+          <BlurView
+            intensity={28}
+            tint={p.dark ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: p.panel }]} />
+          <View
+            style={[
+              styles.nudgeDot,
+              { backgroundColor: p.accent, shadowColor: p.accent },
+            ]}
+          />
           <View style={styles.nudgeBody}>
             <Text style={[styles.nudgeTitle, { color: p.ink }]} numberOfLines={1}>
               {nudgeEvent.title} · {nudgeText}
             </Text>
             <Text style={[styles.nudgeSub, { color: p.subtle }]}>留下今晚的一点记录</Text>
           </View>
-          <Pressable testID="starlight-rating-nudge-rate" onPress={() => onRate(nudgeEvent.id)} style={[styles.nudgeRate, { backgroundColor: p.accent }]}>
-            <Text style={[styles.nudgeRateText, { color: p.dark ? p.bg : '#ffffff' }]}>Rate</Text>
+          <Pressable
+            testID="starlight-rating-nudge-rate"
+            onPress={() => onRate(nudgeEvent.id)}
+            style={({ pressed }) => [
+              styles.nudgeRate,
+              {
+                backgroundColor: p.accent,
+                shadowColor: p.accent,
+                opacity: pressed ? 0.88 : 1,
+                transform: [{ scale: pressed ? 0.97 : 1 }],
+              },
+            ]}
+          >
+            <Text style={[styles.nudgeRateText, { color: accentInk }]}>Rate</Text>
           </Pressable>
           <Pressable testID="starlight-rating-nudge-dismiss" onPress={onDismissNudge} style={styles.dismiss}>
             <Text style={[styles.dismissText, { color: p.subtle }]}>×</Text>
@@ -167,13 +228,21 @@ export function StarHome({
         </View>
       ) : null}
 
+      {/* Unrated summary — dashed border card */}
       {unratedCount > 0 ? (
         <Pressable
           testID="starlight-unrated-summary"
           onPress={() => {
             if (firstUnrated) onRate(firstUnrated.id);
           }}
-          style={[styles.unrated, { borderColor: p.line }]}
+          style={({ pressed }) => [
+            styles.unrated,
+            {
+              borderColor: p.line,
+              opacity: pressed ? 0.8 : 1,
+              transform: [{ scale: pressed ? 0.99 : 1 }],
+            },
+          ]}
         >
           <Text style={[styles.unratedLabel, { color: p.subtle }]}>Unrated</Text>
           <Text style={[styles.unratedText, { color: p.ink }]}>{unratedCount} 件已结束事件待评价</Text>
@@ -187,7 +256,13 @@ export function StarHome({
             const rating = ratingsByEventId[event.id];
             return (
               <React.Fragment key={`${event.id}-${event.start_time}`}>
-                {index === nextIndex ? <StarlightNowLine p={p} time={formatTime(new Date().toISOString())} testID="starlight-home-now-line" /> : null}
+                {index === nextIndex ? (
+                  <StarlightNowLine
+                    p={p}
+                    time={formatTime(new Date().toISOString())}
+                    testID="starlight-home-now-line"
+                  />
+                ) : null}
                 <StarlightTimelineRow
                   p={p}
                   event={toTimelineEvent(event, categoryByEventId)}
@@ -200,7 +275,21 @@ export function StarHome({
             );
           })
         ) : (
-          <View style={[styles.emptyPanel, { borderColor: p.line, backgroundColor: p.panel }]}>
+          <View style={[styles.emptyPanel, { borderColor: p.line }]}>
+            <BlurView
+              intensity={22}
+              tint={p.dark ? 'dark' : 'light'}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
+            <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: p.panel }]} />
+            <LinearGradient
+              colors={[`${p.accent}14`, 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
             <Text style={[styles.emptyTitle, { color: p.ink }]}>Quiet sky</Text>
             <Text style={[styles.emptyText, { color: p.subtle }]}>No events are scheduled for today.</Text>
           </View>
@@ -211,7 +300,7 @@ export function StarHome({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, color: '#ffffff' },
+  container: { flex: 1, backgroundColor: 'transparent' },
   header: { paddingTop: 32, paddingHorizontal: 22, paddingBottom: 18 },
   kickerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   kicker: {
@@ -228,31 +317,68 @@ const styles = StyleSheet.create({
     lineHeight: 48,
     fontWeight: '400',
     fontStyle: 'italic',
+    letterSpacing: -1,
   },
   metaLine: { flexDirection: 'row', gap: 10, alignItems: 'center', marginTop: 10 },
   metaText: { fontFamily: 'Inter-Regular', fontSize: 12, letterSpacing: 0.4 },
   metaDot: { opacity: 0.4, fontSize: 12 },
   todoPad: { paddingHorizontal: 22, paddingBottom: 8 },
-  todoSummaryCard: {
+  glassCard: {
+    borderWidth: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  todoSummaryInner: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 14,
   },
-  todoLabel: { marginRight: 10, fontSize: 10, letterSpacing: 2, fontWeight: '600', textTransform: 'uppercase' },
+  todoLabel: {
+    marginRight: 10,
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 10,
+    letterSpacing: 2,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
   todoSummaryText: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  todoOpen: { fontFamily: 'Fraunces-Medium', fontSize: 20, fontWeight: '500', fontVariant: ['tabular-nums'] },
+  todoOpen: {
+    fontFamily: 'Fraunces-Medium',
+    fontSize: 20,
+    fontWeight: '500',
+    fontVariant: ['tabular-nums'],
+  },
   todoSub: { fontFamily: 'Inter-Regular', fontSize: 11 },
   chevron: { fontSize: 11 },
   todoPreview: { paddingTop: 8, paddingHorizontal: 6 },
   previewRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
-  previewCheck: { width: 14, height: 14, borderRadius: 7, borderWidth: 1, flexShrink: 0 },
-  previewTitle: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: '500' },
-  previewDue: { fontSize: 10, letterSpacing: 0.5, flexShrink: 0 },
+  previewCheck: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 1,
+    flexShrink: 0,
+    shadowOpacity: 0.45,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 2,
+  },
+  previewTitle: { flex: 1, minWidth: 0, fontFamily: 'Inter-Medium', fontSize: 13, fontWeight: '500' },
+  previewDue: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 10,
+    letterSpacing: 0.5,
+    flexShrink: 0,
+  },
   viewAll: { paddingTop: 8, paddingBottom: 2 },
-  viewAllText: { fontSize: 10, letterSpacing: 2, fontWeight: '600', textTransform: 'uppercase' },
+  viewAllText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 10,
+    letterSpacing: 2,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
   nudge: {
     marginHorizontal: 22,
     marginVertical: 8,
@@ -263,13 +389,48 @@ const styles = StyleSheet.create({
     gap: 10,
     borderWidth: 1,
     borderRadius: 14,
+    overflow: 'hidden',
+    shadowOpacity: 0.3,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 4,
   },
-  nudgeDot: { width: 6, height: 6, borderRadius: 3, shadowOpacity: 1, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } },
+  nudgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 4,
+  },
   nudgeBody: { flex: 1, minWidth: 0 },
-  nudgeTitle: { fontSize: 12, fontWeight: '500' },
-  nudgeSub: { marginTop: 2, fontSize: 9, letterSpacing: 1.6, textTransform: 'uppercase' },
-  nudgeRate: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, flexShrink: 0 },
-  nudgeRateText: { fontSize: 10, letterSpacing: 2, fontWeight: '600', textTransform: 'uppercase' },
+  nudgeTitle: { fontFamily: 'Inter-Medium', fontSize: 12, fontWeight: '500' },
+  nudgeSub: {
+    marginTop: 2,
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 9,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    fontWeight: '500',
+  },
+  nudgeRate: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    flexShrink: 0,
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 3,
+  },
+  nudgeRateText: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 10,
+    letterSpacing: 2,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
   dismiss: { paddingHorizontal: 4, flexShrink: 0 },
   dismissText: { fontSize: 16 },
   unrated: {
@@ -285,12 +446,24 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderRadius: 14,
   },
-  unratedLabel: { fontSize: 10, letterSpacing: 2, fontWeight: '600', textTransform: 'uppercase' },
-  unratedText: { flex: 1, minWidth: 0, fontSize: 12, fontWeight: '500' },
+  unratedLabel: {
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 10,
+    letterSpacing: 2,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  unratedText: { flex: 1, minWidth: 0, fontFamily: 'Inter-Medium', fontSize: 12, fontWeight: '500' },
   unratedArrow: { fontSize: 12 },
   timeline: { flex: 1 },
   timelineContent: { paddingTop: 10, paddingBottom: 24 },
-  emptyPanel: { marginHorizontal: 22, padding: 18, borderWidth: 1, borderRadius: 14 },
-  emptyTitle: { fontFamily: 'Fraunces-Medium', fontSize: 20 },
-  emptyText: { fontSize: 12, lineHeight: 18 },
+  emptyPanel: {
+    marginHorizontal: 22,
+    padding: 18,
+    borderWidth: 1,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  emptyTitle: { fontFamily: 'Fraunces-Medium', fontSize: 20, fontStyle: 'italic' },
+  emptyText: { marginTop: 4, fontFamily: 'Inter-Regular', fontSize: 12, lineHeight: 18 },
 });

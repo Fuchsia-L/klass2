@@ -12,13 +12,14 @@ import { resolvePalette } from '../src/themes';
 function TabLayout() {
   const theme = useTheme();
   const { themeName } = useThemeSettings();
-  const isMinimal = resolvePalette(themeName)?.pkg.id === 'minimal';
+  const pkgId = resolvePalette(themeName)?.pkg.id;
+  const hideOuterTabBar = pkgId === 'minimal' || pkgId === 'starlight';
 
   return (
     <>
       <StatusBar style="light" backgroundColor={theme.colors.bg} />
       <Tabs
-        tabBar={isMinimal ? () => null : undefined}
+        tabBar={hideOuterTabBar ? () => null : undefined}
         screenOptions={{
           headerShown: false,
           tabBarStyle: {

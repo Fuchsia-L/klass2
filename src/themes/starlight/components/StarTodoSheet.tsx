@@ -1,3 +1,5 @@
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { addTodo, deleteTodo, updateTodo } from '../../../features/todo/services/todo.service';
@@ -107,27 +109,82 @@ export function StarTodoSheet({ p, todo, isNew, onClose }: Props) {
     }
   };
 
+  // HTML reference uses:
+  //   background: linear-gradient(180deg, rgba(40,30,70,0.72) 0%, rgba(20,14,42,0.80) 100%)
+  //   backdrop-filter: blur(28px) saturate(160%)
+  //   border: 1px solid rgba(255,255,255,0.08)  (dark)
+  //   box-shadow: 0 -20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)
+  const sheetGradient = p.dark
+    ? (['rgba(40,30,70,0.72)', 'rgba(20,14,42,0.80)'] as const)
+    : (['rgba(255,255,255,0.75)', 'rgba(255,255,255,0.65)'] as const);
+  const sheetBorder = p.dark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.6)';
+  const glintColor = p.dark ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.9)';
+
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
       <View testID="starlight-todo-sheet" style={styles.overlay}>
-        <Pressable testID="starlight-todo-sheet-scrim" onPress={onClose} style={[styles.scrim, { backgroundColor: p.sheetScrim }]} />
+        <Pressable
+          testID="starlight-todo-sheet-scrim"
+          onPress={onClose}
+          style={styles.scrim}
+        >
+          <BlurView
+            intensity={12}
+            tint={p.dark ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { backgroundColor: p.sheetScrim }]}
+          />
+        </Pressable>
         <View
           style={[
             styles.sheet,
             {
-              backgroundColor: p.dark ? 'rgba(20,16,42,0.88)' : 'rgba(255,255,255,0.82)',
-              borderColor: p.dark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.6)',
-              shadowColor: p.nowGlow,
+              borderColor: sheetBorder,
+              shadowColor: p.dark ? '#000000' : p.nowGlow,
             },
           ]}
         >
-          <View style={[styles.glint, { backgroundColor: p.dark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.9)' }]} />
-          <ScrollView>
+          {/* backdrop blur layer */}
+          <BlurView
+            intensity={56}
+            tint={p.dark ? 'dark' : 'light'}
+            style={[StyleSheet.absoluteFill, styles.sheetBackdrop]}
+            pointerEvents="none"
+          />
+          {/* translucent gradient wash — matches HTML's linear-gradient(180deg,...) */}
+          <LinearGradient
+            colors={sheetGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={[StyleSheet.absoluteFill, styles.sheetBackdrop]}
+            pointerEvents="none"
+          />
+          {/* faint top-edge inner glint */}
+          <LinearGradient
+            colors={['transparent', glintColor, 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.glint}
+            pointerEvents="none"
+          />
+          <ScrollView keyboardShouldPersistTaps="handled">
             <View style={styles.topline}>
-              <Text style={[styles.kicker, { color: p.subtle }]}>{isExisting ? cadence : 'New · 新建'}</Text>
+              <Text style={[styles.kicker, { color: p.subtle }]}>
+                {isExisting ? cadence : 'New · 新建'}
+              </Text>
               {isExisting ? (
                 <Pressable onPress={() => void handleDelete()} testID="starlight-todo-sheet-delete">
-                  <Text style={[styles.status, styles.deleteText, { color: confirmingDelete ? p.accent : p.subtle }]}>
+                  <Text
+                    style={[
+                      styles.status,
+                      styles.deleteText,
+                      { color: confirmingDelete ? p.accent : p.subtle },
+                    ]}
+                  >
                     {confirmingDelete ? 'Tap again' : 'Delete'}
                   </Text>
                 </Pressable>
@@ -145,8 +202,11 @@ export function StarTodoSheet({ p, todo, isNew, onClose }: Props) {
             />
 
             <View style={[styles.rows, { borderTopColor: p.line }]}>
-              <View testID="starlight-todo-sheet-due" style={[styles.dueRow, { borderBottomColor: p.line }]}>
-                <Text style={[styles.fieldLabel, { color: p.subtle }]}>Due</Text>
+              <View
+                testID="starlight-todo-sheet-due"
+                style={[styles.dueRow, { borderBottomColor: p.line }]}
+              >
+                <Text style={[styles.rowLabel, { color: p.subtle }]}>Due</Text>
                 <Text style={[styles.dueValue, { color: p.ink }]}>{cadence}</Text>
               </View>
               <Text style={[styles.fieldLabel, { color: p.subtle }]}>Type</Text>
@@ -158,15 +218,27 @@ export function StarTodoSheet({ p, todo, isNew, onClose }: Props) {
                       key={key}
                       testID={`starlight-todo-type-${key}`}
                       onPress={() => setDraftType(key)}
-                      style={[
+                      style={({ pressed }) => [
                         styles.choiceBtn,
                         {
                           borderColor: selected ? p.accent : p.line,
                           backgroundColor: selected ? p.accent : 'transparent',
+                          shadowColor: p.accent,
+                          shadowOpacity: selected ? 0.7 : 0,
+                          shadowRadius: selected ? 10 : 0,
+                          shadowOffset: { width: 0, height: 0 },
+                          elevation: selected ? 3 : 0,
+                          opacity: pressed ? 0.85 : 1,
+                          transform: [{ scale: pressed ? 0.97 : 1 }],
                         },
                       ]}
                     >
-                      <Text style={[styles.choiceText, { color: selected ? (p.dark ? p.bg : '#ffffff') : p.ink }]}>
+                      <Text
+                        style={[
+                          styles.choiceText,
+                          { color: selected ? (p.dark ? p.bg : '#ffffff') : p.ink },
+                        ]}
+                      >
                         {TODO_TYPE_LABELS[key]}
                       </Text>
                     </Pressable>
@@ -182,15 +254,27 @@ export function StarTodoSheet({ p, todo, isNew, onClose }: Props) {
                       key={key}
                       testID={`starlight-todo-priority-${key}`}
                       onPress={() => setDraftPriority(key)}
-                      style={[
+                      style={({ pressed }) => [
                         styles.choiceBtn,
                         {
                           borderColor: selected ? p.accent : p.line,
                           backgroundColor: selected ? p.accent : 'transparent',
+                          shadowColor: p.accent,
+                          shadowOpacity: selected ? 0.7 : 0,
+                          shadowRadius: selected ? 10 : 0,
+                          shadowOffset: { width: 0, height: 0 },
+                          elevation: selected ? 3 : 0,
+                          opacity: pressed ? 0.85 : 1,
+                          transform: [{ scale: pressed ? 0.97 : 1 }],
                         },
                       ]}
                     >
-                      <Text style={[styles.choiceText, { color: selected ? (p.dark ? p.bg : '#ffffff') : p.ink }]}>
+                      <Text
+                        style={[
+                          styles.choiceText,
+                          { color: selected ? (p.dark ? p.bg : '#ffffff') : p.ink },
+                        ]}
+                      >
                         {PRIORITY_LABELS[key]}
                       </Text>
                     </Pressable>
@@ -212,7 +296,12 @@ export function StarTodoSheet({ p, todo, isNew, onClose }: Props) {
 
             {error ? <Text style={[styles.error, { color: p.accent }]}>{error}</Text> : null}
             <View style={styles.actions}>
-              <StarlightSheetBtn p={p} label="Close" onPress={onClose} testID="starlight-todo-sheet-close" />
+              <StarlightSheetBtn
+                p={p}
+                label="Close"
+                onPress={onClose}
+                testID="starlight-todo-sheet-close"
+              />
               <StarlightSheetBtn
                 p={p}
                 label={saving ? 'Saving' : 'Save'}
@@ -247,9 +336,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: 24,
     paddingBottom: 26,
-    shadowOpacity: 0.5,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: -16 },
+    overflow: 'hidden',
+    // HTML: box-shadow: 0 -20px 60px rgba(0,0,0,0.5)
+    shadowOpacity: 0.55,
+    shadowRadius: 32,
+    shadowOffset: { width: 0, height: -18 },
+    elevation: 24,
+  },
+  sheetBackdrop: {
+    borderRadius: 28,
   },
   glint: {
     position: 'absolute',
@@ -257,20 +352,24 @@ const styles = StyleSheet.create({
     left: '15%',
     right: '15%',
     height: 1,
-    opacity: 0.8,
+    opacity: 0.85,
   },
   topline: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     gap: 12,
   },
   kicker: {
+    flexShrink: 1,
+    fontFamily: 'Inter-SemiBold',
     fontSize: 10,
     letterSpacing: 2,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
   status: {
+    flexShrink: 0,
     fontFamily: 'Fraunces-SemiBold',
     fontSize: 11,
     fontVariant: ['tabular-nums'],
@@ -284,6 +383,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Fraunces-Regular',
     fontSize: 32,
     lineHeight: 38,
+    letterSpacing: -0.7,
     fontStyle: 'italic',
     borderBottomWidth: 1,
     paddingVertical: 6,
@@ -300,9 +400,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     gap: 12,
   },
+  rowLabel: {
+    width: 60,
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 10,
+    letterSpacing: 1.8,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
   fieldLabel: {
     marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 10,
+    fontFamily: 'Inter-SemiBold',
     fontSize: 10,
     letterSpacing: 1.8,
     fontWeight: '600',
@@ -311,6 +420,7 @@ const styles = StyleSheet.create({
   dueValue: {
     flex: 1,
     minWidth: 0,
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -322,10 +432,11 @@ const styles = StyleSheet.create({
   choiceBtn: {
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 9,
   },
   choiceText: {
+    fontFamily: 'Inter-Bold',
     fontSize: 10,
     letterSpacing: 1.5,
     fontWeight: '700',
@@ -336,6 +447,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 11,
+    fontFamily: 'Inter-Medium',
     fontSize: 13,
     fontWeight: '500',
     minHeight: 72,
@@ -343,12 +455,13 @@ const styles = StyleSheet.create({
   },
   error: {
     marginTop: 14,
+    fontFamily: 'Inter-Bold',
     fontSize: 12,
     fontWeight: '700',
   },
   actions: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 20,
+    marginTop: 22,
   },
 });
