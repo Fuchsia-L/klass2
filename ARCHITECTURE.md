@@ -46,10 +46,24 @@ React Native + Expo (SDK 55, expo-router) app for schedule + time-slot rating wi
 - `components/parts/MinTodoRow.tsx` — Single todo row.
 - `components/parts/usePulse.ts` — Opacity loop hook (1.0 ↔ 0.55, 2.4s).
 
-### Starlight theme (`src/themes/starlight/`) — scaffolding only (Phase 1)
-- `package.ts` — Exports `starlightPackage: ThemePackage` with id `'starlight'`. `renderRoot` returns an empty Fragment pending Phase 2 screen work.
+### Starlight theme (`src/themes/starlight/`) — primitives (Phase 2)
+- `package.ts` — Exports `starlightPackage: ThemePackage` with id `'starlight'`. `renderRoot` returns an empty Fragment pending screen assembly.
 - `palettes/nebula.ts` — Exports `starlightNebulaPalette` (id `'starlight-nebula'`), `STARLIGHT_NEBULA_COLORS: StarlightPaletteColors`, and `buildStarlightNebulaThemeConfig(id)`. `ThemeConfig.fonts` is `{ heading: 'Fraunces-SemiBold', body: 'Inter-Regular' }`; `colors.ratingFill` maps to the firefly accent.
 - `components/starlightTypes.ts` — `StarlightPaletteColors` (dark, bg, bgGrad, ink, dim, line, subtle, panel, panelSolid, accent, accent2, nowLine, nowGlow, moonFace, moonShadow, star, firefly, sheetScrim, galaxy), `StarlightPaletteId`, `StarlightPaletteMap`.
+- `components/parts/starlightMotion.ts` — Reanimated hooks: `useTwinkle(variant, duration, delay)`, `useShootingStar(variant)`, `useFirefly(variant, duration, delay)`, `useMoonPulse(enabled)`, `useCloudDrift(duration?, delay?)`, `useNowShimmer()`. Variant unions `TwinkleVariant` / `ShootVariant` / `FlyVariant` drive irregular motion curves matching the HTML prototype.
+- `components/parts/StarlightBackground.tsx` — Exports `StarlightBackground`, `Starfield`, and deterministic layout arrays `STARLIGHT_STARS` (72 seeded star points), `STARLIGHT_SHOOTING_STARS` (3 variants, only rendered when `p.dark`), `STARLIGHT_FIREFLIES` (5 drifting fireflies). Internal `Star` / `ShootingStar` / `Firefly` / `CloudWash` components consume `p: StarlightPaletteColors`.
+- `components/parts/StarlightBackground.test.tsx` — Deterministic layout + dark-only shooting-star visibility tests.
+- `components/parts/StarlightMoon.tsx` — `StarlightMoon({ p, size?, phase?, testID? })` moon face with phase shadow + `useMoonPulse(p.dark)` glow.
+- `components/parts/StarlightNowLine.tsx` — `StarlightNowLine({ p, time, testID? })` — time column (moon + label) + shimmering NOW bar driven by `useNowShimmer`.
+- `components/parts/StarlightTabBar.tsx` — `StarlightTabBar({ p, tab, setTab, onAdd, testID? })`; tabs `today|week|todos|settings`, labels `TODAY / WEEK / TODOS / SET`, trailing `+` add button. Exports `StarlightTab` union.
+- `components/parts/StarlightSheetBtn.tsx` — `StarlightSheetBtn({ p, label, onPress, primary?, flex?, disabled?, testID? })` pill button.
+- `components/parts/StarlightSheetRow.tsx` — `StarlightSheetRow({ p, label, value, testID? })` label/value row.
+- `components/parts/StarlightPaletteCell.tsx` — `StarlightPaletteCell({ p, palette, selected, onPress, testID? })` settings palette picker cell with mini starfield preview derived from `palette.preview`.
+- `components/parts/StarlightTimelineRow.tsx` — `StarlightTimelineRow({ p, event, rating?, onOpen, onRate?, testID? })`. Props `event: StarlightTimelineEvent` with state `'past'|'now'|'next'|'upcoming'`; upcoming rows render `ROW_FIREFLIES` via `useFirefly`. Exports `StarlightTimelineEvent`, `StarlightTimelineRating`, `StarlightTimelineState`.
+- `components/parts/StarlightTodoRow.tsx` — `StarlightTodoRow({ p, todo, onToggle, onOpen, testID? })`. Exports `StarlightTodoItem { id, title, dueLabel, note?, done }`.
+- `components/parts/StarlightTabBar.test.tsx` — Active-tab tint + `+` add callback tests.
+- `components/parts/StarlightParts.style.test.tsx` — Palette-token propagation tests for shared parts (ensures no hard-coded minimal/legacy colors).
+- `components/parts/index.ts` — Barrel re-export of the parts above.
 
 ### Legacy theme (`src/themes/legacy/`)
 - `package.ts` — `legacyPackage`. Lazy-requires per-route root (LegacyHome/Matrix/Rating/Settings).
@@ -109,7 +123,7 @@ React Native + Expo (SDK 55, expo-router) app for schedule + time-slot rating wi
 - `getAllPalettes() → ThemePalette[]` — Flattens every package's palettes (used by settings palette picker and registry tests).
 - `getThemeConfigById(id: string) → ThemeConfig | null` — Convenience resolver to a palette's `ThemeConfig`.
 - `useTheme() → ThemeConfig` / `useThemeSettings() → { themeName, setThemeName }` — Context hooks.
-- `starlightPackage.renderRoot` — Returns an empty Fragment in Phase 1; screens land in a later phase.
+- `starlightPackage.renderRoot` — Still an empty Fragment after Phase 2 (screens land in a later phase). Shared primitives live under `src/themes/starlight/components/parts/` and are palette-driven only (no feature-hook imports).
 
 ### MinimalRoot (`src/themes/minimal/components/MinimalRoot.tsx`)
 - `MinimalRoot({ route }: { route: RouteName }) → ReactNode`. Caller: `minimalPackage.renderRoot`.
@@ -136,6 +150,23 @@ React Native + Expo (SDK 55, expo-router) app for schedule + time-slot rating wi
 - `MinNowLine { p, time }`.
 - `MinSheetBtn { p, label, onPress, primary?, flex?, disabled?, testID? }`.
 - `usePulse() → Animated.Value`.
+
+### Starlight parts (`src/themes/starlight/components/parts/`)
+- `useTwinkle(variant, duration, delay) → AnimatedStyle` — opacity + scale loop per variant (`twinkleA`: smooth two-beat, `twinkleB`: long-linear + flash, `twinkleC`: three-stage pulse).
+- `useShootingStar(variant) → AnimatedStyle` — diagonal translate+rotate with opacity envelope scheduled over a 22s cycle; offsets per `shootA|B|C`.
+- `useFirefly(variant, duration, delay) → AnimatedStyle` — irregular x/y/opacity interpolation along seeded path.
+- `useMoonPulse(enabled) → AnimatedStyle` — 3.2s opacity + scale pulse; inert when `enabled=false` (non-dark palette).
+- `useCloudDrift(duration?, delay?) → AnimatedStyle` — x translate `-90 → 520` over `duration` (default 50s).
+- `useNowShimmer() → AnimatedStyle` — 3s opacity 0.6 ↔ 1 loop for the NOW bar.
+- `StarlightBackground { p, testID?, children? }` — Full-bleed starfield host. Mounts `Starfield`, a drifting cloud wash, and the firefly cluster; children render above the scene at `zIndex: 2`.
+- `Starfield { p }` — Galaxy wash + 72 deterministic stars + dark-only shooting stars. Safe to mount standalone in cells/previews.
+- `StarlightMoon { p, size?, phase?, testID? }` — Self-contained moon disc (default size 14, phase 0.75).
+- `StarlightNowLine { p, time, testID? }` — Row renderer for current-time indicator.
+- `StarlightTabBar { p, tab, setTab, onAdd, testID? }` — Controlled tab bar with fixed label set.
+- `StarlightSheetBtn { p, label, onPress, primary?, flex?, disabled?, testID? }` / `StarlightSheetRow { p, label, value, testID? }` — Sheet primitives.
+- `StarlightPaletteCell { p, palette, selected, onPress, testID? }` — Settings picker cell; reads `palette.preview` for mini-starfield swatch.
+- `StarlightTimelineRow { p, event, rating?, onOpen, onRate?, testID? }` — Timeline row; fireflies decorate `state='upcoming'`, past rows get strike-through + muted text; unrated past rows expose an `onRate` pill.
+- `StarlightTodoRow { p, todo, onToggle, onOpen, testID? }` — Todo row with accent checkbox + due label.
 
 ### Schedule feature
 - `ScheduleEvent { id, title, category: CategoryKey, start_time, end_time, repeat: 'none'|'daily'|'weekly', location?, reminder_minutes?: 5|15|30, notes?, source?, is_completed }` — bound to storage; DO NOT MODIFY.
@@ -164,7 +195,10 @@ AsyncStorage → `loadEventsFromStorage` → `useEvents` (subscribes) → Minima
 `useRatings().ratings` → MinimalRoot passes `ratings` prop to MinHome → `MinTrends` → `buildSevenDayTrendBuckets(ratings, now)` buckets by local-day boundaries on `created_at`, averaging `efficiency` (1–5) and `moodToIndex(mood)` (1–5, skipping unset). Empty days render a 1px placeholder bar; mood polyline draws only when ≥2 populated days exist.
 
 ### Theme palette propagation
-`useThemeSettings` (AsyncStorage-backed) → `resolvePalette(themeName)` → `ThemePackage.renderRoot(route)` → MinimalRoot derives `p: MinimalPaletteColors` from `MINIMAL_COLORS_BY_ID[palette.id]` → passes `p` prop down (MinHome, MinTimelineRow, sheets, MinTabBar).
+`useThemeSettings` (AsyncStorage-backed) → `resolvePalette(themeName)` → `ThemePackage.renderRoot(route)` → MinimalRoot derives `p: MinimalPaletteColors` from `MINIMAL_COLORS_BY_ID[palette.id]` → passes `p` prop down (MinHome, MinTimelineRow, sheets, MinTabBar). Starlight primitives consume `p: StarlightPaletteColors` directly from a palette entry (e.g. `STARLIGHT_NEBULA_COLORS`) — no root container yet.
+
+### Starlight motion scheduling
+`starlightMotion` hooks use `useSharedValue` + `withRepeat(withSequence(...), -1)` scheduled inside a `setTimeout(delay)`; the timer is cleared on unmount to avoid orphan animations. Twinkle/firefly variants start from variant-specific baselines so the deterministic star/firefly arrays produce visually staggered motion without runtime randomness.
 
 ### Timeline state classification (MinimalRoot.withState)
 `nowMs = Date.now()`; per event: `end ≤ now → past`; `start ≤ now < end → now`; first future-event → `next`; rest → `upcoming`. First-future pick uses `start_time >= nowMs` (Phase 4 fix).
@@ -177,7 +211,7 @@ AsyncStorage → `loadEventsFromStorage` → `useEvents` (subscribes) → Minima
 - `react 19.2.0` / `react-native 0.83.2` — core.
 - `@react-native-async-storage/async-storage 2.2.0` — local persistence.
 - `react-native-gesture-handler ~2.30.0` — gestures.
-- `react-native-reanimated` — preferred animation lib.
+- `react-native-reanimated 4.2.1` — preferred animation lib; drives all Starlight motion (`useSharedValue` + `useAnimatedStyle` + `withRepeat/Sequence/Timing`). Requires `react-native-worklets/plugin` in `babel.config.js` for Reanimated 4.
 - `react-native-safe-area-context ~5.6.2` — safe area.
 - `react-native-screens ~4.23.0` — native stack backing.
 - `react-native-svg 15.15.3` — SVG primitives (for future trend charts).
@@ -186,6 +220,8 @@ AsyncStorage → `loadEventsFromStorage` → `useEvents` (subscribes) → Minima
 
 ### Dev / test
 - `jest ^29.7.0`, `jest-expo ^55.0.11`, `@testing-library/react-native ^13.3.3`, `react-test-renderer ^19.2.0`, `typescript ~5.9.2`.
+- `jest.setup.ts` mocks `react-native-reanimated` with a lightweight shim (`Easing`, `interpolate`, `useAnimatedStyle`, `useSharedValue`, `withRepeat/Sequence/Timing`) so Starlight motion hooks render in tests without a worklet runtime.
+- `babel.config.js` — `expo/node_modules/babel-preset-expo` preset + `react-native-worklets/plugin`. Required for Reanimated 4 worklets; do not revert to the legacy `react-native-reanimated/plugin`.
 
 ## 5. Changelog
 
@@ -193,3 +229,4 @@ AsyncStorage → `loadEventsFromStorage` → `useEvents` (subscribes) → Minima
 - Phase 2: Minimal timeline rails now use `softenCategoryColor(CATEGORIES[event.category].color)` (rgba alpha 0.55) in `MinTimelineRow.tsx`; past-row `opacity: 0.5` stacks on top of the colored rail. Added `MinTimelineRow.test.tsx` covering helper + past-state rail rendering.
 - Phase 3: Added `MinTrends` (parts/MinTrends.tsx) + `buildSevenDayTrendBuckets`; rendered at bottom of Today ScrollView. MinHome gained a `ratings` prop sourced from `useRatings().ratings` in MinimalRoot. Mood line/points via `react-native-svg`; empty days show 1px placeholder, mood polyline drawn only with ≥2 populated days. Added `MinTrends.test.tsx` and `MinHome.test.tsx`.
 - Starlight Phase 1: Registered `starlightPackage` (id `'starlight'`) in `src/themes/index.ts` alongside legacy + minimal. Added `src/themes/starlight/{package.ts, palettes/nebula.ts, components/starlightTypes.ts}` with the `starlight-nebula` palette and `StarlightPaletteColors` model. `renderRoot` is a placeholder Fragment. Registered Fraunces (Regular/Medium/SemiBold/Bold) and Inter (Regular/Medium/SemiBold/Bold) fonts in `app/_layout.tsx`; font assets added under `assets/fonts/`. Added `src/themes/index.test.ts` for palette discoverability.
+- Starlight Phase 2: Added shared UI primitives under `src/themes/starlight/components/parts/` — `starlightMotion` hooks (`useTwinkle/useShootingStar/useFirefly/useMoonPulse/useCloudDrift/useNowShimmer`), `StarlightBackground` + `Starfield` with deterministic `STARLIGHT_STARS/STARLIGHT_SHOOTING_STARS/STARLIGHT_FIREFLIES` arrays, `StarlightMoon`, `StarlightNowLine`, `StarlightTabBar`, `StarlightSheetBtn`, `StarlightSheetRow`, `StarlightPaletteCell`, `StarlightTimelineRow`, `StarlightTodoRow`, and a parts barrel `index.ts`. All primitives consume `StarlightPaletteColors` only and do not import `src/features/**`. Added `babel.config.js` with `react-native-worklets/plugin` for Reanimated 4 and extended `jest.setup.ts` with a reanimated shim. Added `StarlightBackground.test.tsx`, `StarlightTabBar.test.tsx`, and `StarlightParts.style.test.tsx`.
