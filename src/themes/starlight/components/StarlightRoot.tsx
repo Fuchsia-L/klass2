@@ -23,6 +23,7 @@ import {
 } from './parts';
 import { StarHome } from './StarHome';
 import { StarMatrix } from './StarMatrix';
+import { StarEventSheet } from './StarEventSheet';
 import { StarSettings } from './StarSettings';
 import { StarTodoSheet } from './StarTodoSheet';
 import { StarTodos } from './StarTodos';
@@ -75,11 +76,6 @@ function latestRatingsByEventId(ratings: TimeSlotRating[]): RatingsByEventId {
     }
     return acc;
   }, {});
-}
-
-function formatTime(iso: string): string {
-  const date = new Date(iso);
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
 function nudgeCopy(event: StarlightEvent | null): string {
@@ -255,7 +251,13 @@ export function StarlightRoot({ route }: { route: RouteName }) {
         setTab={setTab}
         onAdd={() => (tab === 'todos' ? setTodoSheetState({ mode: 'create' }) : setEventSheetId('new'))}
       />
-      <StarlightEventSheet p={p} event={selectedEvent} isNew={eventSheetId === 'new'} onClose={() => setEventSheetId(null)} />
+      <StarEventSheet
+        p={p}
+        event={selectedEvent}
+        visible={eventSheetId !== null}
+        onClose={() => setEventSheetId(null)}
+        onSave={() => setEventSheetId(null)}
+      />
       <StarlightRatingSheet
         p={p}
         event={ratingTarget}
@@ -315,25 +317,6 @@ function SheetFrame({
         </View>
       </View>
     </Modal>
-  );
-}
-
-function StarlightEventSheet({
-  p,
-  event,
-  isNew,
-  onClose,
-}: {
-  p: StarlightPaletteColors;
-  event: StarlightEvent | null;
-  isNew: boolean;
-  onClose: () => void;
-}) {
-  return (
-    <SheetFrame p={p} visible={isNew || !!event} testID="starlight-event-sheet" title={isNew ? 'New Event' : 'Event'} onClose={onClose}>
-      <StarlightSheetRow p={p} label="Title" value={event?.title ?? 'Draft event'} />
-      <StarlightSheetRow p={p} label="Time" value={event ? `${formatTime(event.start_time)}-${formatTime(event.end_time)}` : 'Unset'} />
-    </SheetFrame>
   );
 }
 
