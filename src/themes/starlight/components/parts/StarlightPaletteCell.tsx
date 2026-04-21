@@ -9,9 +9,10 @@ type Props = {
   selected: boolean;
   onPress: () => void;
   testID?: string;
+  selectedTestID?: string;
 };
 
-export function StarlightPaletteCell({ p, palette, selected, onPress, testID }: Props) {
+export function StarlightPaletteCell({ p, palette, selected, onPress, testID, selectedTestID }: Props) {
   const preview = palette.preview;
 
   return (
@@ -54,6 +55,11 @@ export function StarlightPaletteCell({ p, palette, selected, onPress, testID }: 
           {palette.sub ?? ''}
         </Text>
       </View>
+      {selected ? (
+        <Text testID={selectedTestID} style={[styles.activeMark, { color: p.accent }]}>
+          Selected
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -104,6 +110,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 10,
     letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  activeMark: {
+    position: 'absolute',
+    right: 12,
+    bottom: 10,
+    fontSize: 9,
+    letterSpacing: 1.4,
+    fontWeight: '700',
     textTransform: 'uppercase',
   },
 });

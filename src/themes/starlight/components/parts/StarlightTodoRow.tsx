@@ -34,7 +34,7 @@ export function StarlightTodoRow({ p, todo, onToggle, onOpen, testID }: Props) {
       <Pressable
         testID="starlight-todo-toggle"
         onPress={(e) => {
-          e.stopPropagation();
+          e?.stopPropagation?.();
           onToggle();
         }}
         style={[

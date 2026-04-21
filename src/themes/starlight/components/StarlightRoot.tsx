@@ -1,5 +1,5 @@
 import React from 'react';
-import { Animated, Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, StyleSheet, Text, View } from 'react-native';
 import { useTheme, useThemeSettings } from '../../../theme/ThemeContext';
 import { useEvents, useSemesterConfig } from '../../../features/schedule';
 import { type CategoryKey, type ScheduleEvent } from '../../../features/schedule/types';
@@ -15,16 +15,17 @@ import { starlightNebulaPalette, STARLIGHT_NEBULA_COLORS } from '../palettes/neb
 import type { StarlightPaletteColors } from './starlightTypes';
 import {
   StarlightBackground,
-  StarlightPaletteCell,
   StarlightSheetBtn,
   StarlightSheetRow,
   StarlightTabBar,
-  StarlightTodoRow,
   type StarlightTab,
   type StarlightTimelineEvent,
 } from './parts';
 import { StarHome } from './StarHome';
 import { StarMatrix } from './StarMatrix';
+import { StarSettings } from './StarSettings';
+import { StarTodoSheet } from './StarTodoSheet';
+import { StarTodos } from './StarTodos';
 
 type StarlightEvent = ScheduleEvent & { state: StarlightTimelineEvent['state'] };
 
@@ -79,12 +80,6 @@ function latestRatingsByEventId(ratings: TimeSlotRating[]): RatingsByEventId {
 function formatTime(iso: string): string {
   const date = new Date(iso);
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-}
-
-function todoDueLabel(todo: TodoItem): string {
-  if (todo.type === 'daily') return 'DAILY';
-  if (todo.type === 'weekly') return 'WEEKLY';
-  return 'LONG';
 }
 
 function nudgeCopy(event: StarlightEvent | null): string {
@@ -224,7 +219,7 @@ export function StarlightRoot({ route }: { route: RouteName }) {
     {
       key: 'todos',
       element: (
-        <StarlightTodos
+        <StarTodos
           p={p}
           todos={todos}
           onToggle={(id) => void toggleTodoComplete(id)}
@@ -235,7 +230,7 @@ export function StarlightRoot({ route }: { route: RouteName }) {
     {
       key: 'settings',
       element: (
-        <StarlightSettings
+        <StarSettings
           p={p}
           paletteId={theme.id}
           palettes={STARLIGHT_PALETTES}
@@ -267,7 +262,7 @@ export function StarlightRoot({ route }: { route: RouteName }) {
         existing={existingRating}
         onClose={() => setRatingTargetId(null)}
       />
-      <StarlightTodoSheet p={p} todo={todoSheetTodo} isNew={todoSheetIsNew} onClose={() => setTodoSheetState(null)} />
+      <StarTodoSheet p={p} todo={todoSheetTodo} isNew={todoSheetIsNew} onClose={() => setTodoSheetState(null)} />
     </StarlightBackground>
   );
 }
@@ -292,72 +287,6 @@ function Screen({ name, active, children }: { name: StarlightTab; active: boolea
     >
       {children}
     </Animated.View>
-  );
-}
-
-function StarlightTodos({
-  p,
-  todos,
-  onToggle,
-  onOpenTodo,
-}: {
-  p: StarlightPaletteColors;
-  todos: TodoItem[];
-  onToggle: (id: string) => void;
-  onOpenTodo: (todo: TodoItem) => void;
-}) {
-  return (
-    <ScrollView testID="starlight-todos" contentContainerStyle={styles.screenContent}>
-      <Text style={[styles.kicker, { color: p.subtle }]}>TODOS</Text>
-      <Text style={[styles.title, { color: p.ink }]}>Task Constellation</Text>
-      {todos.map((todo) => (
-        <StarlightTodoRow
-          key={todo.id}
-          p={p}
-          todo={{
-            id: todo.id,
-            title: todo.title,
-            dueLabel: todoDueLabel(todo),
-            note: todo.notes,
-            done: todo.is_completed,
-          }}
-          onToggle={() => onToggle(todo.id)}
-          onOpen={() => onOpenTodo(todo)}
-          testID={`starlight-todo-${todo.id}`}
-        />
-      ))}
-    </ScrollView>
-  );
-}
-
-function StarlightSettings({
-  p,
-  paletteId,
-  palettes,
-  onSelectPalette,
-}: {
-  p: StarlightPaletteColors;
-  paletteId: string;
-  palettes: ThemePalette[];
-  onSelectPalette: (id: string) => void;
-}) {
-  return (
-    <ScrollView testID="starlight-settings" contentContainerStyle={styles.screenContent}>
-      <Text style={[styles.kicker, { color: p.subtle }]}>SET</Text>
-      <Text style={[styles.title, { color: p.ink }]}>Sky Settings</Text>
-      <View style={styles.paletteGrid}>
-        {palettes.map((palette) => (
-          <StarlightPaletteCell
-            key={palette.id}
-            p={p}
-            palette={palette}
-            selected={palette.id === paletteId}
-            onPress={() => onSelectPalette(palette.id)}
-            testID={`starlight-palette-${palette.id}`}
-          />
-        ))}
-      </View>
-    </ScrollView>
   );
 }
 
@@ -427,41 +356,9 @@ function StarlightRatingSheet({
   );
 }
 
-function StarlightTodoSheet({
-  p,
-  todo,
-  isNew,
-  onClose,
-}: {
-  p: StarlightPaletteColors;
-  todo: TodoItem | null;
-  isNew: boolean;
-  onClose: () => void;
-}) {
-  return (
-    <SheetFrame p={p} visible={isNew || !!todo} testID="starlight-todo-sheet" title={isNew ? 'New Todo' : 'Todo'} onClose={onClose}>
-      <StarlightSheetRow p={p} label="Title" value={todo?.title ?? 'Draft todo'} />
-      <StarlightSheetRow p={p} label="Cadence" value={todo ? todoDueLabel(todo) : 'Unset'} />
-    </SheetFrame>
-  );
-}
-
 const styles = StyleSheet.create({
   stack: { flex: 1, position: 'relative', overflow: 'hidden' },
   screen: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
-  screenContent: { paddingTop: 72, paddingHorizontal: 22, paddingBottom: 36 },
-  kicker: {
-    fontSize: 10,
-    letterSpacing: 2,
-    fontWeight: '700',
-  },
-  title: {
-    marginTop: 6,
-    marginBottom: 18,
-    fontFamily: 'Fraunces-SemiBold',
-    fontSize: 30,
-    lineHeight: 36,
-  },
   panel: {
     borderWidth: 1,
     borderRadius: 18,
@@ -485,11 +382,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginBottom: 12,
-  },
-  paletteGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
   },
   scrim: {
     flex: 1,
