@@ -26,8 +26,8 @@ describe('starlightNebulaPalette', () => {
         priorityLow: expect.any(String),
       },
       fonts: {
-        heading: 'Fraunces-SemiBold',
-        body: 'Inter-Regular',
+        heading: 'NotoSerifSC-SemiBold',
+        body: 'NotoSansSC-Regular',
       },
       radius: {
         card: expect.any(Number),
@@ -37,7 +37,7 @@ describe('starlightNebulaPalette', () => {
     });
 
     expect(theme.colors.ratingFill).toBe('#ffd89b');
-    expect(theme.fonts.heading).toMatch(/^Fraunces-/);
-    expect(theme.fonts.body).toMatch(/^Inter-/);
+    expect(theme.fonts.heading).toMatch(/^NotoSerifSC-/);
+    expect(theme.fonts.body).toMatch(/^NotoSansSC-/);
   });
 });

@@ -8,6 +8,7 @@ import { formatTime } from './minimalTypes';
 import { MinNowLine } from './parts/MinNowLine';
 import { MinTimelineRow } from './parts/MinTimelineRow';
 import { MinTrends } from './parts/MinTrends';
+import { useNow } from '../../../shared/lib/useNow';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -52,7 +53,8 @@ export function MinHome({
   onGoTodos,
 }: Props) {
   const [todoExpanded, setTodoExpanded] = React.useState(false);
-  const now = new Date();
+  const nowMs = useNow();
+  const now = new Date(nowMs);
   const openTodos = todos.filter((todo) => !todo.is_completed);
   const doneTodos = todos.filter((todo) => todo.is_completed);
   const nextIndex = events.findIndex((event) => event.state === 'next');
@@ -140,7 +142,7 @@ export function MinHome({
       <ScrollView style={styles.timeline} contentContainerStyle={styles.timelineContent}>
         {events.map((event, index) => (
           <React.Fragment key={event.id}>
-            {index === nextIndex ? <MinNowLine p={p} time={formatTime(new Date().toISOString())} /> : null}
+            {index === nextIndex ? <MinNowLine p={p} time={formatTime(new Date(nowMs).toISOString())} /> : null}
             <MinTimelineRow
               event={event}
               p={p}

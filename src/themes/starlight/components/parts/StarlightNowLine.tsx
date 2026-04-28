@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { StarlightPaletteColors } from '../starlightTypes';
 import { StarlightMoon } from './StarlightMoon';
 import { useNowShimmer } from './starlightMotion';
@@ -24,6 +25,14 @@ export function StarlightNowLine({ p, time, testID = 'starlight-now-line' }: Pro
         testID="starlight-now-line-bar"
         style={[styles.line, { backgroundColor: p.nowLine, shadowColor: p.nowGlow }, shimmerStyle]}
       >
+        <LinearGradient
+          colors={[p.nowLine, `${p.nowLine}66`, 'transparent']}
+          locations={[0, 0.8, 1]}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
         <Text testID="starlight-now-line-label" style={[styles.label, { color: p.nowLine }]}>
           NOW
         </Text>
@@ -50,7 +59,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   time: {
-    fontFamily: 'Fraunces-SemiBold',
+    fontFamily: 'NotoSerifSC-SemiBold',
     fontSize: 12,
     fontWeight: '500',
     fontVariant: ['tabular-nums'],
@@ -62,6 +71,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.85,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },
+    elevation: 3,
   },
   label: {
     position: 'absolute',

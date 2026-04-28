@@ -30,6 +30,7 @@ const styles = StyleSheet.create({
   },
   label: {
     width: 60,
+    fontFamily: 'NotoSansSC-SemiBold',
     fontSize: 10,
     letterSpacing: 1.8,
     fontWeight: '600',
@@ -38,6 +39,7 @@ const styles = StyleSheet.create({
   value: {
     flex: 1,
     minWidth: 0,
+    fontFamily: 'NotoSansSC-Medium',
     fontSize: 14,
     fontWeight: '500',
   },

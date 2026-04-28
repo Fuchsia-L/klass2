@@ -36,27 +36,25 @@ describe('StarTodoSheet', () => {
     mockDeleteTodo.mockResolvedValue(undefined);
   });
 
-  it('renders create mode with editable title and unset due fields', () => {
+  it('renders create mode with editable title and no delete button', () => {
     const result = render(
       <StarTodoSheet p={STARLIGHT_NEBULA_COLORS} todo={null} isNew onClose={jest.fn()} />,
     );
 
     expect(result.getByTestId('starlight-todo-sheet')).toBeTruthy();
-    expect(result.getByText('New · 新建')).toBeTruthy();
-    expect(result.getByTestId('starlight-todo-sheet-title').props.placeholder).toBe('Draft todo');
-    expect(result.getByTestId('starlight-todo-sheet-due')).toBeTruthy();
-    expect(result.getByText('Unset')).toBeTruthy();
-    expect(result.getByText('Draft')).toBeTruthy();
+    expect(result.getByText('New Todo')).toBeTruthy();
+    expect(result.getByTestId('starlight-todo-sheet-title').props.placeholder).toBe('Title');
+    expect(result.queryByTestId('starlight-todo-sheet-delete')).toBeNull();
   });
 
-  it('renders edit mode title, note, and due fields', () => {
+  it('renders edit mode title, note, and delete button', () => {
     const result = render(
       <StarTodoSheet p={STARLIGHT_NEBULA_COLORS} todo={todo} isNew={false} onClose={jest.fn()} />,
     );
 
+    expect(result.getByText('Edit Todo')).toBeTruthy();
     expect(result.getByTestId('starlight-todo-sheet-title').props.value).toBe('Chart the moon garden');
     expect(result.getByTestId('starlight-todo-sheet-note').props.value).toBe('Use the quiet lens');
-    expect(result.getAllByText('LONG')).toHaveLength(2);
     expect(result.getByText('长期')).toBeTruthy();
     expect(result.getByText('中')).toBeTruthy();
     expect(result.getByTestId('starlight-todo-sheet-delete')).toBeTruthy();

@@ -28,6 +28,7 @@ export function StarlightMoon({ p, size = 14, phase = 0.75, testID = 'starlight-
           shadowColor: p.nowGlow,
           shadowOpacity: p.dark ? 0.55 : 0.2,
           shadowRadius: p.dark ? 24 : 8,
+          elevation: p.dark ? 12 : 4,
         },
         pulseStyle,
       ]}

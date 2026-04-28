@@ -83,6 +83,14 @@ export default function RootLayout() {
     'Inter-Medium': require('../assets/fonts/Inter-Medium.ttf'),
     'Inter-SemiBold': require('../assets/fonts/Inter-SemiBold.ttf'),
     'Inter-Bold': require('../assets/fonts/Inter-Bold.ttf'),
+    'NotoSerifSC-Regular': require('../assets/fonts/NotoSerifSC-400.ttf'),
+    'NotoSerifSC-Medium': require('../assets/fonts/NotoSerifSC-500.ttf'),
+    'NotoSerifSC-SemiBold': require('../assets/fonts/NotoSerifSC-600.ttf'),
+    'NotoSerifSC-Bold': require('../assets/fonts/NotoSerifSC-700.ttf'),
+    'NotoSansSC-Regular': require('../assets/fonts/NotoSansSC-400.ttf'),
+    'NotoSansSC-Medium': require('../assets/fonts/NotoSansSC-500.ttf'),
+    'NotoSansSC-SemiBold': require('../assets/fonts/NotoSansSC-600.ttf'),
+    'NotoSansSC-Bold': require('../assets/fonts/NotoSansSC-700.ttf'),
   });
 
   if (!fontsLoaded && !fontError) return null;

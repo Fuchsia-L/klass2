@@ -1,5 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { StarlightPaletteColors } from '../starlightTypes';
 
 export type StarlightTab = 'today' | 'week' | 'todos' | 'settings';
@@ -28,9 +30,23 @@ export function StarlightTabBar({ p, tab, setTab, onAdd, testID = 'starlight-tab
         {
           borderTopColor: p.line,
           backgroundColor: p.dark ? 'rgba(10,6,32,0.60)' : 'rgba(255,255,255,0.55)',
+          shadowColor: p.nowGlow,
         },
       ]}
     >
+      <BlurView
+        intensity={36}
+        tint={p.dark ? 'dark' : 'light'}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      <LinearGradient
+        colors={[`${p.accent}00`, `${p.accent}22`]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.topGlow}
+        pointerEvents="none"
+      />
       <View style={styles.tabs}>
         {TABS.map((item) => {
           const active = tab === item.key;
@@ -77,6 +93,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     zIndex: 3,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  topGlow: {
+    position: 'absolute',
+    top: -24,
+    left: 0,
+    right: 0,
+    height: 24,
   },
   tabs: {
     flex: 1,
@@ -87,6 +114,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabText: {
+    fontFamily: 'NotoSansSC-SemiBold',
     fontSize: 10,
     letterSpacing: 1.8,
     fontWeight: '600',
@@ -102,9 +130,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
   },
   addText: {
-    fontFamily: 'Fraunces-Regular',
+    fontFamily: 'NotoSerifSC-Regular',
     fontSize: 22,
     fontWeight: '300',
     lineHeight: 24,

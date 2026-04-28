@@ -2,6 +2,7 @@ import React from 'react';
 import { Animated, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { MinimalEvent, MinimalPaletteColors } from './minimalTypes';
 import { usePulse } from './parts/usePulse';
+import { useNow } from '../../../shared/lib/useNow';
 
 // Web-only escape hatches (RN's StyleSheet types reject these but RN-Web passes them through to CSS).
 // dayStrip mirrors the grid's scrollbar gutter so day columns and grid columns align horizontally.
@@ -82,7 +83,8 @@ export function MinMatrix({ p, events, weekStart, semesterWeek, weekOffset, onOp
       }),
     [onNextWeek, onPrevWeek],
   );
-  const now = new Date();
+  const nowMs = useNow();
+  const now = new Date(nowMs);
   const todayIndex = Math.min(6, Math.max(0, Math.floor((new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime() - weekStart.getTime()) / 86400000)));
   const nowTop = Math.max(0, (now.getHours() - START_HOUR) * HOUR_HEIGHT + (now.getMinutes() / 60) * HOUR_HEIGHT);
   const nums = DAYS.map((_, index) => {

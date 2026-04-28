@@ -2,6 +2,9 @@ import type { ScheduleEvent } from '../../../features/schedule/types';
 import type { TimeSlotRating } from '../../../features/rating/types';
 import type { ThemePalette } from '../../types';
 import { STARLIGHT_NEBULA_COLORS } from '../palettes/nebula';
+import { STARLIGHT_MIDNIGHT_COLORS } from '../palettes/midnight';
+import { STARLIGHT_TWILIGHT_COLORS } from '../palettes/twilight';
+import { STARLIGHT_ABYSS_COLORS } from '../palettes/abyss';
 
 export type StarlightPaletteColors = {
   dark: boolean;
@@ -25,7 +28,11 @@ export type StarlightPaletteColors = {
   galaxy: string;
 };
 
-export type StarlightPaletteId = 'starlight-nebula';
+export type StarlightPaletteId =
+  | 'starlight-nebula'
+  | 'starlight-midnight'
+  | 'starlight-twilight'
+  | 'starlight-abyss';
 
 export type StarlightPaletteMap = Record<StarlightPaletteId, StarlightPaletteColors>;
 
@@ -33,6 +40,9 @@ export type StarlightTab = 'today' | 'week' | 'todos' | 'settings';
 
 export const STARLIGHT_COLORS_BY_ID: Record<string, StarlightPaletteColors> = {
   'starlight-nebula': STARLIGHT_NEBULA_COLORS,
+  'starlight-midnight': STARLIGHT_MIDNIGHT_COLORS,
+  'starlight-twilight': STARLIGHT_TWILIGHT_COLORS,
+  'starlight-abyss': STARLIGHT_ABYSS_COLORS,
 };
 
 export type StarlightEvent = ScheduleEvent & {

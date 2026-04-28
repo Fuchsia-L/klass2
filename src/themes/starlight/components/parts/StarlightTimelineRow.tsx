@@ -102,6 +102,7 @@ export function StarlightTimelineRow({ p, event, rating, onOpen, onRate, testID 
               borderColor: isNext ? p.accent : isPast ? p.line : p.subtle,
               shadowColor: p.accent,
               shadowOpacity: isNext ? 0.8 : 0,
+              elevation: isNext ? 4 : 0,
             },
           ]}
         />
@@ -112,7 +113,7 @@ export function StarlightTimelineRow({ p, event, rating, onOpen, onRate, testID 
             styles.title,
             {
               color: textColor,
-              fontFamily: isNext ? 'Fraunces-SemiBold' : 'Inter-Medium',
+              fontFamily: isNext ? 'NotoSerifSC-SemiBold' : 'NotoSansSC-Medium',
               fontStyle: isNext ? 'italic' : 'normal',
               textDecorationLine: isPast ? 'line-through' : 'none',
               textDecorationColor: p.dim,
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   start: {
-    fontFamily: 'Fraunces-Regular',
+    fontFamily: 'NotoSerifSC-Regular',
     fontSize: 14,
     fontWeight: '400',
     lineHeight: 17,
@@ -252,5 +253,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.85,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },
+    elevation: 5,
   },
 });

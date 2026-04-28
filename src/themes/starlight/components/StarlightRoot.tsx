@@ -8,6 +8,7 @@ import { useTodos } from '../../../features/todo';
 import { toggleTodoComplete } from '../../../features/todo/services/todo.service';
 import type { TodoItem } from '../../../features/todo/types';
 import { getSemesterWeek, getWeekStart } from '../../../features/schedule/domain/calendar';
+import { useNow } from '../../../shared/lib/useNow';
 import type { RouteName } from '../../types';
 import { starlightPackage } from '../package';
 import { StarEventSheet } from './StarEventSheet';
@@ -69,9 +70,9 @@ function latestRatingsByEventId(ratings: ReturnType<typeof useRatings>['ratings'
   }, {});
 }
 
-function nudgeCopy(event: StarlightEvent | null): string {
+function nudgeCopy(event: StarlightEvent | null, nowMs: number): string {
   if (!event) return '';
-  const diffMin = Math.max(0, Math.floor((Date.now() - new Date(event.end_time).getTime()) / 60000));
+  const diffMin = Math.max(0, Math.floor((nowMs - new Date(event.end_time).getTime()) / 60000));
   if (diffMin === 0) return '刚结束';
   if (diffMin < 60) return `刚结束 ${diffMin} 分钟`;
   return `结束 ${Math.floor(diffMin / 60)} 小时前`;
@@ -96,7 +97,8 @@ export function StarlightRoot({ route }: { route: RouteName }) {
     setTab(routeToTab(route));
   }, [route]);
 
-  const now = new Date();
+  const nowMs = useNow();
+  const now = new Date(nowMs);
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
   const tomorrowStart = new Date(todayStart);
@@ -137,7 +139,7 @@ export function StarlightRoot({ route }: { route: RouteName }) {
       todayEvents
         .filter((event) => {
           const end = new Date(event.end_time).getTime();
-          return end < Date.now() && end >= todayStart.getTime() && end < tomorrowStart.getTime();
+          return end < nowMs && end >= todayStart.getTime() && end < tomorrowStart.getTime();
         })
         .filter((event) => !ratingsByEventId[event.id])
         .sort((a, b) => new Date(b.end_time).getTime() - new Date(a.end_time).getTime()),
@@ -192,7 +194,7 @@ export function StarlightRoot({ route }: { route: RouteName }) {
           categoryByEventId={categoryByEventId}
           semesterWeek={semesterWeek}
           nudgeEvent={nudgeEvent}
-          nudgeText={nudgeCopy(nudgeEvent)}
+          nudgeText={nudgeCopy(nudgeEvent, nowMs)}
           unratedCount={pastUnratedToday.length}
           onOpenEvent={setEventSheetId}
           onRate={setRatingTargetId}

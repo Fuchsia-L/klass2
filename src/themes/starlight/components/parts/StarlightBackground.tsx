@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { StarlightPaletteColors } from '../starlightTypes';
 import type { FlyVariant, ShootVariant, TwinkleVariant } from './starlightMotion';
 import { useCloudDrift, useFirefly, useShootingStar, useTwinkle } from './starlightMotion';
@@ -117,12 +118,19 @@ function ShootingStar({ item, p }: { item: ShootingStarPoint; p: StarlightPalett
           left: item.left,
           top: item.top,
           width: item.width,
-          backgroundColor: p.star,
           shadowColor: p.star,
         },
         animatedStyle,
       ]}
-    />
+    >
+      <LinearGradient
+        colors={['transparent', p.star, 'transparent']}
+        locations={[0, 0.55, 1]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={styles.shootingStarTrail}
+      />
+    </Animated.View>
   );
 }
 
@@ -223,11 +231,15 @@ const styles = StyleSheet.create({
   },
   shootingStar: {
     position: 'absolute',
-    height: 1,
+    height: 2,
     opacity: 0,
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
+    shadowOpacity: 0.85,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 0 },
+  },
+  shootingStarTrail: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 2,
   },
   firefly: {
     position: 'absolute',

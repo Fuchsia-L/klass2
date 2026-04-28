@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, within } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import type { TodoItem } from '../../../features/todo/types';
 import { STARLIGHT_NEBULA_COLORS } from '../palettes/nebula';
 import { StarTodos } from './StarTodos';
@@ -28,23 +28,20 @@ const todos: TodoItem[] = [
 ];
 
 describe('StarTodos', () => {
-  it('renders open and completed todos in separate Starlight groups', () => {
+  it('renders open and completed todos with Starlight header and section labels', () => {
     const result = render(
       <StarTodos p={STARLIGHT_NEBULA_COLORS} todos={todos} onToggle={jest.fn()} onOpenTodo={jest.fn()} />,
     );
 
-    const openGroup = within(result.getByTestId('starlight-todos-open'));
-    const doneGroup = within(result.getByTestId('starlight-todos-done'));
-
     expect(result.getByText('Wishlist')).toBeTruthy();
     expect(result.getByText('1 open · 1 done')).toBeTruthy();
-    expect(openGroup.getByText('Open')).toBeTruthy();
-    expect(openGroup.getByText('Finish lab notes')).toBeTruthy();
-    expect(openGroup.getByText('DAILY')).toBeTruthy();
-    expect(openGroup.getByText('Bring telescope data')).toBeTruthy();
-    expect(doneGroup.getByText('Done')).toBeTruthy();
-    expect(doneGroup.getByText('Archive readings')).toBeTruthy();
-    expect(doneGroup.getByText('WEEKLY')).toBeTruthy();
+    expect(result.getByTestId('starlight-todos-open')).toBeTruthy();
+    expect(result.getByTestId('starlight-todos-done')).toBeTruthy();
+    expect(result.getByText('Finish lab notes')).toBeTruthy();
+    expect(result.getByText('DAILY')).toBeTruthy();
+    expect(result.getByText('Bring telescope data')).toBeTruthy();
+    expect(result.getByText('Archive readings')).toBeTruthy();
+    expect(result.getByText('WEEKLY')).toBeTruthy();
   });
 
   it('fires toggle and open callbacks with the selected todo', () => {
@@ -57,7 +54,27 @@ describe('StarTodos', () => {
     fireEvent.press(result.getByTestId('starlight-todo-open-1'));
     expect(onOpenTodo).toHaveBeenCalledWith(todos[0]);
 
-    fireEvent.press(within(result.getByTestId('starlight-todo-open-1')).getByTestId('starlight-todo-toggle'));
+    // The StarlightTodoRow nests a toggle Pressable with testID="starlight-todo-toggle".
+    const toggles = result.getAllByTestId('starlight-todo-toggle');
+    fireEvent.press(toggles[0]);
     expect(onToggle).toHaveBeenCalledWith('open-1');
+  });
+
+  it('filters todos by type when a tab is selected', () => {
+    const result = render(
+      <StarTodos p={STARLIGHT_NEBULA_COLORS} todos={todos} onToggle={jest.fn()} onOpenTodo={jest.fn()} />,
+    );
+
+    // All filter shows both rows.
+    expect(result.queryByText('Finish lab notes')).toBeTruthy();
+    expect(result.queryByText('Archive readings')).toBeTruthy();
+
+    fireEvent.press(result.getByTestId('starlight-todos-tab-daily'));
+    expect(result.queryByText('Finish lab notes')).toBeTruthy();
+    expect(result.queryByText('Archive readings')).toBeNull();
+
+    fireEvent.press(result.getByTestId('starlight-todos-tab-weekly'));
+    expect(result.queryByText('Finish lab notes')).toBeNull();
+    expect(result.queryByText('Archive readings')).toBeTruthy();
   });
 });

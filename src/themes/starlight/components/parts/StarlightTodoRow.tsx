@@ -90,6 +90,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   checkText: {
+    fontFamily: 'NotoSansSC-Bold',
     fontSize: 11,
     fontWeight: '700',
     lineHeight: 13,
@@ -99,14 +100,17 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   title: {
+    fontFamily: 'NotoSansSC-Medium',
     fontSize: 14,
     fontWeight: '500',
   },
   note: {
+    fontFamily: 'NotoSansSC-Regular',
     fontSize: 11,
     marginTop: 2,
   },
   due: {
+    fontFamily: 'NotoSansSC-Regular',
     fontSize: 10,
     letterSpacing: 0.5,
     flexShrink: 0,

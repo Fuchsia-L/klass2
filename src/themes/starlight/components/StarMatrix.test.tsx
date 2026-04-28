@@ -1,7 +1,12 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { STARLIGHT_NEBULA_COLORS } from '../palettes/nebula';
-import { StarMatrix, type StarMatrixEvent } from './StarMatrix';
+import {
+  StarMatrix,
+  scrollMatrixToNow,
+  triggerMatrixWeekSwipeNavigation,
+  type StarMatrixEvent,
+} from './StarMatrix';
 
 function matrixEvent(id: string, title: string, start: string, end: string, state: StarMatrixEvent['state'] = 'upcoming'): StarMatrixEvent {
   return {
@@ -17,7 +22,7 @@ function matrixEvent(id: string, title: string, start: string, end: string, stat
   };
 }
 
-const weekStart = new Date('2026-04-20T00:00:00.000Z');
+const weekStart = new Date(2026, 3, 20, 0, 0, 0, 0);
 
 function renderMatrix(overrides: Partial<React.ComponentProps<typeof StarMatrix>> = {}) {
   const onPrevWeek = jest.fn();
@@ -27,8 +32,8 @@ function renderMatrix(overrides: Partial<React.ComponentProps<typeof StarMatrix>
   const props: React.ComponentProps<typeof StarMatrix> = {
     p: STARLIGHT_NEBULA_COLORS,
     events: [
-      matrixEvent('work', 'Project Review', '2026-04-21T09:30:00.000Z', '2026-04-21T11:00:00.000Z', 'next'),
-      matrixEvent('overnight', 'Overnight Build', '2026-04-19T23:00:00.000Z', '2026-04-20T07:00:00.000Z', 'past'),
+      matrixEvent('work', 'Project Review', new Date(2026, 3, 21, 9, 30).toISOString(), new Date(2026, 3, 21, 11, 0).toISOString(), 'next'),
+      matrixEvent('overnight', 'Overnight Build', new Date(2026, 3, 20, 6, 0).toISOString(), new Date(2026, 3, 20, 7, 0).toISOString(), 'past'),
     ],
     weekStart,
     semesterWeek: 9,
@@ -43,16 +48,110 @@ function renderMatrix(overrides: Partial<React.ComponentProps<typeof StarMatrix>
   return { ...render(<StarMatrix {...props} />), onPrevWeek, onNextWeek, onResetWeek, onOpenEvent };
 }
 
-beforeEach(() => {
-  jest.useFakeTimers();
-  jest.setSystemTime(new Date('2026-04-21T10:30:00.000Z'));
+describe('StarMatrix initial positioning', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  it('scrolls near the current-time row through the ScrollView ref path', () => {
+    const scrollTo = jest.fn();
+
+    scrollMatrixToNow({ scrollTo }, 510);
+
+    expect(scrollTo).toHaveBeenCalledWith({ y: 410, animated: false });
+  });
+
+  it('uses layout readiness instead of iOS-only contentOffset for initial position', () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 3, 20, 14, 30, 0, 0));
+
+    const { getByTestId } = render(
+      <StarMatrix
+        p={STARLIGHT_NEBULA_COLORS}
+        events={[]}
+        weekStart={new Date(2026, 3, 20, 0, 0, 0, 0)}
+        semesterWeek={8}
+        weekOffset={0}
+        onOpenEvent={jest.fn()}
+        onPrevWeek={jest.fn()}
+        onNextWeek={jest.fn()}
+        onResetWeek={jest.fn()}
+      />,
+    );
+
+    const scrollView = getByTestId('starlight-matrix-scroll');
+    expect(scrollView.props.onLayout).toEqual(expect.any(Function));
+    expect(scrollView.props.contentOffset).toBeUndefined();
+  });
 });
 
-afterEach(() => {
-  jest.useRealTimers();
+describe('StarMatrix week navigation', () => {
+  it('navigates to the next week for a left swipe past the horizontal threshold', () => {
+    const onPrevWeek = jest.fn();
+    const onNextWeek = jest.fn();
+
+    const handled = triggerMatrixWeekSwipeNavigation(-56, 12, onPrevWeek, onNextWeek);
+
+    expect(handled).toBe(true);
+    expect(onNextWeek).toHaveBeenCalledTimes(1);
+    expect(onPrevWeek).not.toHaveBeenCalled();
+  });
+
+  it('navigates to the previous week for a right swipe past the horizontal threshold', () => {
+    const onPrevWeek = jest.fn();
+    const onNextWeek = jest.fn();
+
+    const handled = triggerMatrixWeekSwipeNavigation(64, -8, onPrevWeek, onNextWeek);
+
+    expect(handled).toBe(true);
+    expect(onPrevWeek).toHaveBeenCalledTimes(1);
+    expect(onNextWeek).not.toHaveBeenCalled();
+  });
+
+  it('ignores horizontal movement below the threshold', () => {
+    const onPrevWeek = jest.fn();
+    const onNextWeek = jest.fn();
+
+    const handled = triggerMatrixWeekSwipeNavigation(-50, 8, onPrevWeek, onNextWeek);
+
+    expect(handled).toBe(false);
+    expect(onPrevWeek).not.toHaveBeenCalled();
+    expect(onNextWeek).not.toHaveBeenCalled();
+  });
+
+  it('ignores vertical-dominant movement so timeline scrolling can continue', () => {
+    const onPrevWeek = jest.fn();
+    const onNextWeek = jest.fn();
+
+    const handled = triggerMatrixWeekSwipeNavigation(-80, 30, onPrevWeek, onNextWeek);
+
+    expect(handled).toBe(false);
+    expect(onPrevWeek).not.toHaveBeenCalled();
+    expect(onNextWeek).not.toHaveBeenCalled();
+  });
+
+  it('keeps the header previous and next week buttons wired to their callbacks', () => {
+    const { getByTestId, onPrevWeek, onNextWeek } = renderMatrix();
+
+    fireEvent.press(getByTestId('starlight-matrix-prev-week'));
+    fireEvent.press(getByTestId('starlight-matrix-next-week'));
+
+    expect(onPrevWeek).toHaveBeenCalledTimes(1);
+    expect(onNextWeek).toHaveBeenCalledTimes(1);
+  });
 });
 
-describe('StarMatrix', () => {
+describe('StarMatrix rendering', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 3, 21, 10, 30, 0, 0));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('renders the week header strip, semester label, grid, and now marker', () => {
     const result = renderMatrix();
 
@@ -77,7 +176,7 @@ describe('StarMatrix', () => {
     expect(result.onResetWeek).toHaveBeenCalledTimes(1);
   });
 
-  it('renders selected-week events, including a clipped spanning event, and forwards event presses', () => {
+  it('renders selected-week events and forwards event presses', () => {
     const result = renderMatrix();
 
     expect(result.getByText('Project Review')).toBeTruthy();

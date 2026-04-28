@@ -39,6 +39,7 @@ export function StarlightSheetBtn({
           transform: [{ scale: pressed ? 0.98 : 1 }],
           shadowColor: p.nowGlow,
           shadowOpacity: activePrimary ? 0.8 : 0,
+          elevation: activePrimary ? 8 : 0,
         },
       ]}
     >
@@ -60,6 +61,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
   text: {
+    fontFamily: 'NotoSansSC-SemiBold',
     fontSize: 11,
     letterSpacing: 2,
     fontWeight: '600',

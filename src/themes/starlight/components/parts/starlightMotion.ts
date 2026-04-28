@@ -90,34 +90,32 @@ export function useShootingStar(variant: ShootVariant) {
   const progress = useSharedValue(0);
 
   useEffect(() => {
-    const start = variant === 'shootA' ? 0 : variant === 'shootB' ? 0.38 : 0.7;
-    const visibleIn = variant === 'shootA' ? 0.03 : variant === 'shootB' ? 0.42 : 0.74;
-    const visibleOut = variant === 'shootA' ? 0.14 : variant === 'shootB' ? 0.54 : 0.88;
-    const end = variant === 'shootA' ? 0.18 : variant === 'shootB' ? 0.58 : 0.92;
+    const startDelay = variant === 'shootA' ? 1500 : variant === 'shootB' ? 9000 : 16500;
+    const flashMs = 3200;
+    const cycleMs = 22000;
+    const idleMs = cycleMs - flashMs;
 
-    progress.value = withRepeat(
-      withSequence(
-        withTiming(start, { duration: start * 22000, easing: linear }),
-        withTiming(visibleIn, { duration: (visibleIn - start) * 22000, easing: linear }),
-        withTiming(visibleOut, { duration: (visibleOut - visibleIn) * 22000, easing: linear }),
-        withTiming(end, { duration: (end - visibleOut) * 22000, easing: linear }),
-        withTiming(1, { duration: (1 - end) * 22000, easing: linear }),
-        withTiming(0, { duration: 0 }),
-      ),
-      -1,
-      false,
-    );
+    const timer = setTimeout(() => {
+      progress.value = withRepeat(
+        withSequence(
+          withTiming(1, { duration: flashMs, easing: linear }),
+          withTiming(0, { duration: 0 }),
+          withTiming(0, { duration: idleMs, easing: linear }),
+        ),
+        -1,
+        false,
+      );
+    }, startDelay);
+
+    return () => clearTimeout(timer);
   }, [progress, variant]);
 
   return useAnimatedStyle(() => {
     const travelX = variant === 'shootA' ? -240 : variant === 'shootB' ? -200 : -280;
     const travelY = variant === 'shootA' ? 80 : variant === 'shootB' ? 60 : 110;
-    const activeStart = variant === 'shootA' ? 0 : variant === 'shootB' ? 0.38 : 0.7;
-    const fadeIn = variant === 'shootA' ? 0.03 : variant === 'shootB' ? 0.42 : 0.74;
-    const fadeOut = variant === 'shootA' ? 0.18 : variant === 'shootB' ? 0.58 : 0.92;
     const rotate = variant === 'shootA' ? '-20deg' : variant === 'shootB' ? '-15deg' : '-28deg';
-    const travel = interpolate(progress.value, [activeStart, fadeOut], [0, 1], 'clamp');
-    const opacity = interpolate(progress.value, [activeStart, fadeIn, fadeOut, 1], [0, 1, 0, 0], 'clamp');
+    const travel = interpolate(progress.value, [0, 1], [0, 1], 'clamp');
+    const opacity = interpolate(progress.value, [0, 0.15, 0.85, 1], [0, 1, 1, 0], 'clamp');
 
     return {
       opacity,

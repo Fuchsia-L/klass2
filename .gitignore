@@ -31,6 +31,7 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript
@@ -40,5 +41,15 @@ yarn-error.*
 /ios
 /android
 
-# dev-pipeline runtime artifacts
+# Internal tooling state (not part of release)
 .dev-pipeline/
+.dev-pipeline.old-*/
+.claude/
+.codex-prompts/
+
+# IDE
+.vscode/
+.idea/
+
+# misc artifacts
+$null

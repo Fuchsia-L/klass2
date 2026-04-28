@@ -27,6 +27,7 @@ export function StarlightPaletteCell({ p, palette, selected, onPress, testID, se
           opacity: selected ? 1 : 0.78,
           shadowColor: p.nowGlow,
           shadowOpacity: selected ? 0.65 : 0,
+          elevation: selected ? 8 : 0,
           transform: [{ scale: pressed ? 0.98 : 1 }],
         },
       ]}
@@ -101,7 +102,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   name: {
-    fontFamily: 'Fraunces-SemiBold',
+    fontFamily: 'NotoSerifSC-SemiBold',
     fontSize: 18,
     fontWeight: '500',
     fontStyle: 'italic',

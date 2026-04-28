@@ -48,8 +48,8 @@ export function buildStarlightNebulaThemeConfig(id: string): ThemeConfig {
       priorityLow: STARLIGHT_NEBULA_COLORS.subtle,
     },
     fonts: {
-      heading: 'Fraunces-SemiBold',
-      body: 'Inter-Regular',
+      heading: 'NotoSerifSC-SemiBold',
+      body: 'NotoSansSC-Regular',
     },
     radius: {
       card: 14,
