@@ -30,4 +30,10 @@ export interface TodoItem {
   last_reset: string;
   created_at: string;
   notes?: string;
+  // Cloud sync fields (see docs/spec-cloud-sync.md). Optional so pre-sync
+  // records already in AsyncStorage stay valid; the storage layer lazily
+  // back-fills updated_at on load.
+  updated_at?: string;
+  synced_at?: string | null;
+  deleted_at?: string | null;
 }

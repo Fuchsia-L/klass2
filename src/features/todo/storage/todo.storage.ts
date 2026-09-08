@@ -30,6 +30,22 @@ function isTodoItem(v: unknown): v is TodoItem {
   );
 }
 
+/**
+ * Lazily back-fills the cloud-sync timestamps on todos written before the sync
+ * layer existed. `created_at` was already required, so only `updated_at` needs
+ * seeding (from `created_at`, which is the truthful "last known write" for a
+ * pre-sync record). `deleted_at` absent = active.
+ */
+function upgradeTodoRecord(todo: TodoItem, now: string): TodoItem {
+  if (typeof todo.updated_at === 'string') return todo;
+  return {
+    ...todo,
+    created_at: todo.created_at ?? now,
+    updated_at: todo.created_at ?? now,
+    synced_at: todo.synced_at ?? null,
+  };
+}
+
 export async function loadTodosFromStorage(): Promise<TodoItem[]> {
   if (cachedTodos) return cloneTodos(cachedTodos);
 
@@ -41,7 +57,19 @@ export async function loadTodosFromStorage(): Promise<TodoItem[]> {
     return ok;
   });
 
-  cachedTodos = cloneTodos(valid);
+  const now = new Date().toISOString();
+  let upgraded = false;
+  const todos = valid.map((todo) => {
+    const next = upgradeTodoRecord(todo, now);
+    if (next !== todo) upgraded = true;
+    return next;
+  });
+
+  cachedTodos = cloneTodos(todos);
+  if (upgraded) {
+    // Persist the back-filled timestamps so the upgrade happens once.
+    await saveJSON(STORAGE_KEYS.todos, cachedTodos);
+  }
   return cloneTodos(cachedTodos);
 }
 

@@ -52,7 +52,7 @@ jest.mock('../src/theme/ThemeContext', () => ({
   }),
 }));
 
-jest.mock('../src/features/settings', () => ({
+jest.mock('../src/features/settings/hooks/useSettingsForm', () => ({
   useSettingsForm: jest.fn(),
 }));
 
@@ -78,6 +78,43 @@ jest.mock('../src/features/rating/sync/wiring', () => {
     saveSyncToken: jest.fn().mockResolvedValue(undefined),
     clearSyncToken: jest.fn().mockResolvedValue(undefined),
     __mockScheduler: mockScheduler,
+  };
+});
+
+// The status line summarises three schedulers. These two are stubbed so the
+// copy tests keep driving the rating scheduler alone; aggregation itself is
+// covered in src/shared/sync/sync-state.test.ts and the test below.
+jest.mock('../src/features/schedule/sync', () => {
+  const scheduler = {
+    start: jest.fn(),
+    stop: jest.fn(),
+    pullNow: jest.fn().mockResolvedValue(undefined),
+    notifyLocalChange: jest.fn(),
+    getStatus: jest.fn(() => ({ kind: 'idle', lastSyncAt: null })),
+    onStatusChange: jest.fn(() => () => {}),
+  };
+  return {
+    __esModule: true,
+    getScheduleSyncScheduler: jest.fn(() => scheduler),
+    getSyncingScheduleEventRepository: jest.fn(),
+    __mockScheduler: scheduler,
+  };
+});
+
+jest.mock('../src/features/todo/sync', () => {
+  const scheduler = {
+    start: jest.fn(),
+    stop: jest.fn(),
+    pullNow: jest.fn().mockResolvedValue(undefined),
+    notifyLocalChange: jest.fn(),
+    getStatus: jest.fn(() => ({ kind: 'idle', lastSyncAt: null })),
+    onStatusChange: jest.fn(() => () => {}),
+  };
+  return {
+    __esModule: true,
+    getTodoSyncScheduler: jest.fn(() => scheduler),
+    getSyncingTodoRepository: jest.fn(),
+    __mockScheduler: scheduler,
   };
 });
 
@@ -128,13 +165,34 @@ jest.mock('../src/features/schedule/import/WhutImportWebViewContainer', () => {
   };
 });
 
-const { useSettingsForm } = jest.requireMock('../src/features/settings') as {
+const { useSettingsForm } = jest.requireMock(
+  '../src/features/settings/hooks/useSettingsForm',
+) as {
   useSettingsForm: jest.Mock;
 };
 const { exportLocalRatingsAsJson } = jest.requireMock(
   '../src/features/settings/services/rating-export.service',
 ) as {
   exportLocalRatingsAsJson: jest.Mock;
+};
+
+type MockScheduler = {
+  start: jest.Mock;
+  stop: jest.Mock;
+  pullNow: jest.Mock;
+  notifyLocalChange: jest.Mock;
+  getStatus: jest.Mock;
+  onStatusChange: jest.Mock;
+};
+
+const scheduleSyncMock = jest.requireMock('../src/features/schedule/sync') as {
+  getScheduleSyncScheduler: jest.Mock;
+  __mockScheduler: MockScheduler;
+};
+
+const todoSyncMock = jest.requireMock('../src/features/todo/sync') as {
+  getTodoSyncScheduler: jest.Mock;
+  __mockScheduler: MockScheduler;
 };
 
 const wiringMock = jest.requireMock('../src/features/rating/sync/wiring') as {
@@ -161,6 +219,16 @@ function resetSyncSchedulerMock(initialStatus: SyncSchedulerStatus = { kind: 'id
   scheduler.getStatus.mockReset().mockReturnValue(initialStatus);
   scheduler.onStatusChange.mockReset().mockImplementation(() => () => {});
   wiringMock.getConfiguredSyncScheduler.mockClear();
+  // Schedule/todo default to idle-never so the summary reflects the rating
+  // scheduler under test unless a case says otherwise.
+  [scheduleSyncMock.__mockScheduler, todoSyncMock.__mockScheduler].forEach((mock) => {
+    mock.start.mockReset();
+    mock.stop.mockReset();
+    mock.pullNow.mockReset().mockResolvedValue(undefined);
+    mock.notifyLocalChange.mockReset();
+    mock.getStatus.mockReset().mockReturnValue({ kind: 'idle', lastSyncAt: null });
+    mock.onStatusChange.mockReset().mockImplementation(() => () => {});
+  });
   wiringMock.loadSyncToken.mockReset().mockResolvedValue(null);
   wiringMock.saveSyncToken.mockReset().mockResolvedValue(undefined);
   wiringMock.clearSyncToken.mockReset().mockResolvedValue(undefined);
@@ -438,8 +506,56 @@ describe('SettingsScreen cloud sync section', () => {
       fireEvent.press(getByTestId('manual-sync-button'));
     });
 
-    expect(wiringMock.__mockScheduler.notifyLocalChange).toHaveBeenCalledTimes(1);
-    expect(wiringMock.__mockScheduler.pullNow).toHaveBeenCalledTimes(1);
+    // 立即同步 drives all three collections, not just ratings.
+    [
+      wiringMock.__mockScheduler,
+      scheduleSyncMock.__mockScheduler,
+      todoSyncMock.__mockScheduler,
+    ].forEach((scheduler) => {
+      expect(scheduler.notifyLocalChange).toHaveBeenCalledTimes(1);
+      expect(scheduler.pullNow).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('starts all three schedulers when a token is saved', async () => {
+    const { getByTestId } = render(<SettingsScreen />);
+
+    await waitFor(() => {
+      expect(getByTestId('sync-token-input')).toBeTruthy();
+    });
+
+    fireEvent.changeText(getByTestId('sync-token-input'), 'fresh-token');
+    await act(async () => {
+      fireEvent.press(getByTestId('save-sync-token-button'));
+    });
+
+    [
+      wiringMock.__mockScheduler,
+      scheduleSyncMock.__mockScheduler,
+      todoSyncMock.__mockScheduler,
+    ].forEach((scheduler) => {
+      expect(scheduler.start).toHaveBeenCalled();
+      expect(scheduler.pullNow).toHaveBeenCalled();
+    });
+  });
+
+  it('shows the worst status across the three collections', async () => {
+    // Ratings idle, schedule erroring: the summary must surface the error.
+    wiringMock.__mockScheduler.getStatus.mockReturnValue({
+      kind: 'idle',
+      lastSyncAt: new Date().toISOString(),
+    });
+    scheduleSyncMock.__mockScheduler.getStatus.mockReturnValue({
+      kind: 'error',
+      message: '服务端异常 · 5s 后重试',
+      lastSyncAt: null,
+    });
+
+    const { getByTestId } = render(<SettingsScreen />);
+
+    await waitFor(() => {
+      expect(getByTestId('sync-status-text').props.children).toBe('服务端异常 · 5s 后重试');
+    });
   });
 
   it('renders the unconfigured status copy', async () => {
@@ -483,24 +599,19 @@ describe('SettingsScreen cloud sync section', () => {
       expect(getByTestId('sync-status-text').props.children).toBe('尚未同步');
     });
 
-    act(() => {
-      listenerCapture?.({
-        kind: 'error',
-        message: '网络异常 · 5s 后重试',
-        lastSyncAt: null,
+    // The summary re-reads every scheduler's getStatus() when notified, so the
+    // mock's reported status has to move together with the notification.
+    const pushStatus = (status: SyncSchedulerStatus) => {
+      wiringMock.__mockScheduler.getStatus.mockReturnValue(status);
+      act(() => {
+        listenerCapture?.(status);
       });
-    });
+    };
 
+    pushStatus({ kind: 'error', message: '网络异常 · 5s 后重试', lastSyncAt: null });
     expect(getByTestId('sync-status-text').props.children).toBe('网络异常 · 5s 后重试');
 
-    act(() => {
-      listenerCapture?.({
-        kind: 'error',
-        message: 'token 无效',
-        lastSyncAt: null,
-      });
-    });
-
+    pushStatus({ kind: 'error', message: 'token 无效', lastSyncAt: null });
     expect(getByTestId('sync-status-text').props.children).toBe('token 无效');
   });
 
@@ -510,10 +621,14 @@ describe('SettingsScreen cloud sync section', () => {
     jest.setSystemTime(baseTime);
 
     try {
-      wiringMock.__mockScheduler.getStatus.mockReturnValue({
-        kind: 'idle',
-        lastSyncAt: new Date(baseTime - 30 * 1000).toISOString(),
-      });
+      // All three schedulers must report the timestamp: when every scheduler
+      // is idle the summary shows the OLDEST lastSyncAt, and a scheduler that
+      // never synced would make the whole line read 尚未同步.
+      const lastSyncAt = new Date(baseTime - 30 * 1000).toISOString();
+      const idleAt = { kind: 'idle' as const, lastSyncAt };
+      wiringMock.__mockScheduler.getStatus.mockReturnValue(idleAt);
+      scheduleSyncMock.__mockScheduler.getStatus.mockReturnValue(idleAt);
+      todoSyncMock.__mockScheduler.getStatus.mockReturnValue(idleAt);
 
       const { getByTestId } = render(<SettingsScreen />);
 

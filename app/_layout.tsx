@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Home, Grid3X3, Settings, Star } from 'lucide-react-native';
 import { ThemeProvider, useTheme, useThemeSettings } from '../src/theme/ThemeContext';
 import { RatingServiceProvider } from '../src/features/rating';
+import { CloudSyncProvider } from '../src/features/settings';
 import { resolvePalette } from '../src/themes';
 
 function TabLayout() {
@@ -99,7 +100,9 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ThemeProvider>
         <RatingServiceProvider>
-          <TabLayout />
+          <CloudSyncProvider>
+            <TabLayout />
+          </CloudSyncProvider>
         </RatingServiceProvider>
       </ThemeProvider>
     </SafeAreaProvider>

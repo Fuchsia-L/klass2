@@ -2,8 +2,14 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import type { SyncSchedulerStatus } from '../../../features/rating';
-import { getConfiguredSyncScheduler, saveSyncToken } from '../../../features/rating';
+import { saveSyncToken } from '../../../features/rating';
+import { useAggregateSyncStatus } from '../../../features/settings/hooks/useAggregateSyncStatus';
+import {
+  pullAllNow,
+  startAllSyncSchedulers,
+  syncAllNow,
+} from '../../../features/settings/services/sync-control.service';
+import type { CloudSyncStatus } from '../../../shared/sync';
 import { useThemeSettings } from '../../../theme/ThemeContext';
 import { loadSettings, saveSemesterSettings } from '../../../features/settings/services/settings.service';
 import { exportLocalRatingsAsJson } from '../../../features/settings/services/rating-export.service';
@@ -42,7 +48,7 @@ function formatRelativeSyncTime(iso: string, now: number): string {
   return `${Math.floor(hours / 24)} 天前`;
 }
 
-function describeSyncStatus(status: SyncSchedulerStatus, now: number): string {
+function describeSyncStatus(status: CloudSyncStatus, now: number): string {
   if (status.kind === 'unconfigured') return '未配置云端同步';
   if (status.kind === 'syncing') return '同步中...';
   if (status.kind === 'error') return status.message;
@@ -62,7 +68,8 @@ export function StarSettings({ p, paletteId, palettes, onSelectPalette }: Props)
   const [syncTokenInput, setSyncTokenInput] = React.useState('');
   const [isSavingToken, setIsSavingToken] = React.useState(false);
   const [isExporting, setIsExporting] = React.useState(false);
-  const [syncStatus, setSyncStatus] = React.useState<SyncSchedulerStatus>(() => getConfiguredSyncScheduler().getStatus());
+  // One line covering ratings + schedule + todos.
+  const syncStatus = useAggregateSyncStatus();
   const [relativeTimeTick, setRelativeTimeTick] = React.useState(() => Date.now());
   const [isImportModalVisible, setImportModalVisible] = React.useState(false);
   const [importStatus, setImportStatus] = React.useState<WhutImportStatus>('idle');
@@ -91,12 +98,6 @@ export function StarSettings({ p, paletteId, palettes, onSelectPalette }: Props)
     setForm((currentForm) => ({ ...currentForm, [field]: value }));
     setMessage('');
   };
-
-  React.useEffect(() => {
-    const scheduler = getConfiguredSyncScheduler();
-    setSyncStatus(scheduler.getStatus());
-    return scheduler.onStatusChange(setSyncStatus);
-  }, []);
 
   React.useEffect(() => {
     const interval = setInterval(() => setRelativeTimeTick(Date.now()), RELATIVE_TIME_REFRESH_MS);
@@ -136,9 +137,8 @@ export function StarSettings({ p, paletteId, palettes, onSelectPalette }: Props)
       await saveSyncToken(trimmed);
       setSyncTokenInput('');
       if (trimmed.length > 0) {
-        const scheduler = getConfiguredSyncScheduler();
-        scheduler.start();
-        await scheduler.pullNow();
+        startAllSyncSchedulers();
+        await pullAllNow();
       }
     } catch (error) {
       Alert.alert('保存失败', error instanceof Error ? error.message : '保存 token 失败，请稍后重试。');
@@ -148,9 +148,7 @@ export function StarSettings({ p, paletteId, palettes, onSelectPalette }: Props)
   };
 
   const handleManualSync = async () => {
-    const scheduler = getConfiguredSyncScheduler();
-    scheduler.notifyLocalChange();
-    await scheduler.pullNow();
+    await syncAllNow();
   };
 
   const handleExportRatings = async () => {

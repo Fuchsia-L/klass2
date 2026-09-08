@@ -1,6 +1,9 @@
 import { generateId } from '../../../shared/lib/id';
+import { nowIso } from '../../../shared/sync';
 import { refreshTodos } from '../domain/refresh';
+import { localTodoRepository } from '../storage/todo.repository';
 import { clearTodosCache, loadTodosFromStorage, saveTodosToStorage } from '../storage/todo.storage';
+import { getSyncingTodoRepository, getTodoSyncScheduler } from '../sync';
 import { Priority, TodoItem, TodoType } from '../types';
 
 export type TodoInput = {
@@ -21,14 +24,23 @@ async function persist(todos: TodoItem[]) {
   notify();
 }
 
+/** Active todos only — soft-deleted rows are filtered out. */
 export async function loadTodos(): Promise<TodoItem[]> {
-  const todos = await loadTodosFromStorage();
-  const refreshed = refreshTodos(todos);
-  if (refreshed !== todos) {
-    await persist(refreshed);
-    return refreshed;
+  // listAll: the periodic reset must rewrite the full array, tombstones
+  // included, or they would be physically dropped on write-back.
+  const all = await localTodoRepository.listAll();
+  const refreshed = refreshTodos(all);
+  if (refreshed !== all) {
+    const now = nowIso();
+    // Reset rows changed locally, so they owe the server a push.
+    const stamped = refreshed.map((todo, index) =>
+      todo === all[index] ? todo : { ...todo, updated_at: now, synced_at: null },
+    );
+    await persist(stamped);
+    getTodoSyncScheduler().notifyLocalChange();
+    return stamped.filter((todo) => todo.deleted_at == null);
   }
-  return todos;
+  return all.filter((todo) => todo.deleted_at == null);
 }
 
 export function subscribeToTodos(listener: () => void): () => void {
@@ -37,7 +49,7 @@ export function subscribeToTodos(listener: () => void): () => void {
 }
 
 export async function addTodo(input: TodoInput): Promise<void> {
-  const now = new Date().toISOString();
+  const now = nowIso();
   const todo: TodoItem = {
     id: generateId(),
     title: input.title,
@@ -47,31 +59,51 @@ export async function addTodo(input: TodoInput): Promise<void> {
     last_reset: now,
     created_at: now,
     notes: input.notes,
+    updated_at: now,
+    synced_at: null,
+    deleted_at: null,
   };
-  const todos = await loadTodos();
-  await persist([...todos, todo]);
+  await getSyncingTodoRepository().save(todo);
+  notify();
 }
 
 export async function updateTodo(id: string, input: TodoInput): Promise<void> {
   const todos = await loadTodos();
-  await persist(
-    todos.map((t) => (t.id === id ? { ...t, title: input.title, type: input.type, priority: input.priority, notes: input.notes } : t)),
-  );
+  const existing = todos.find((t) => t.id === id);
+  if (!existing) return;
+
+  await getSyncingTodoRepository().save({
+    ...existing,
+    title: input.title,
+    type: input.type,
+    priority: input.priority,
+    notes: input.notes,
+    updated_at: nowIso(),
+    synced_at: null,
+  });
+  notify();
 }
 
+/** Soft delete: writes a tombstone so the deletion propagates to the server. */
 export async function deleteTodo(id: string): Promise<void> {
-  const todos = await loadTodos();
-  await persist(todos.filter((t) => t.id !== id));
+  await getSyncingTodoRepository().remove(id);
+  notify();
 }
 
 export async function toggleTodoComplete(id: string): Promise<void> {
   const todos = await loadTodos();
-  const now = new Date().toISOString();
-  await persist(
-    todos.map((t) =>
-      t.id === id ? { ...t, is_completed: !t.is_completed, last_reset: now } : t,
-    ),
-  );
+  const existing = todos.find((t) => t.id === id);
+  if (!existing) return;
+
+  const now = nowIso();
+  await getSyncingTodoRepository().save({
+    ...existing,
+    is_completed: !existing.is_completed,
+    last_reset: now,
+    updated_at: now,
+    synced_at: null,
+  });
+  notify();
 }
 
 export function resetTodosState(): void {

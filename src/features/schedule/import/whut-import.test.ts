@@ -292,9 +292,18 @@ describe('WHUT import persistence', () => {
 
     const storedEvents = await loadEvents();
 
-    expect(storedEvents).toEqual([existingManualEvent, ...importedEvents]);
+    // objectContaining: loadEvents() lazily back-fills cloud-sync timestamps
+    // (created_at/updated_at/synced_at/deleted_at) that the fixtures omit.
+    expect(storedEvents).toEqual([
+      expect.objectContaining(existingManualEvent),
+      ...importedEvents.map((event) => expect.objectContaining(event)),
+    ]);
+    // The replaced import is tombstoned, so it no longer surfaces in the
+    // active list.
     expect(storedEvents.find((event) => event.id === existingImportedEvent.id)).toBeUndefined();
-    expect(storedEvents.filter((event) => event.source === 'manual')).toEqual([existingManualEvent]);
+    expect(storedEvents.filter((event) => event.source === 'manual')).toEqual([
+      expect.objectContaining(existingManualEvent),
+    ]);
     expect(storedEvents.filter((event) => event.source === 'whut-import')).toHaveLength(2);
   });
 

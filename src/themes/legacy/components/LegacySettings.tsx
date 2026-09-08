@@ -14,13 +14,16 @@ import { AppBar } from '../../../shared/components/AppBar';
 import { useTheme } from '../../../theme/ThemeContext';
 import { themePackages } from '../../../themes';
 import type { ThemeConfig } from '../../../theme';
-import { useSettingsForm } from '../../../features/settings';
-import { exportLocalRatingsAsJson } from '../../../features/settings/services/rating-export.service';
+import { useAggregateSyncStatus } from '../../../features/settings/hooks/useAggregateSyncStatus';
+import { useSettingsForm } from '../../../features/settings/hooks/useSettingsForm';
 import {
-  getConfiguredSyncScheduler,
-  saveSyncToken,
-  type SyncSchedulerStatus,
-} from '../../../features/rating';
+  pullAllNow,
+  startAllSyncSchedulers,
+  syncAllNow,
+} from '../../../features/settings/services/sync-control.service';
+import type { CloudSyncStatus } from '../../../shared/sync';
+import { exportLocalRatingsAsJson } from '../../../features/settings/services/rating-export.service';
+import { saveSyncToken } from '../../../features/rating';
 import {
   extractArrangedScheduleItems,
   importWhutArrangedList,
@@ -44,7 +47,7 @@ function formatRelativeSyncTime(iso: string, now: number): string {
   return `${days} 天前`;
 }
 
-function describeSyncStatus(status: SyncSchedulerStatus, now: number): string {
+function describeSyncStatus(status: CloudSyncStatus, now: number): string {
   switch (status.kind) {
     case 'unconfigured':
       return '未配置云端同步';
@@ -83,18 +86,10 @@ export function LegacySettings() {
   const [isExportingRatings, setIsExportingRatings] = React.useState(false);
   const [syncTokenInput, setSyncTokenInput] = React.useState('');
   const [isSavingToken, setIsSavingToken] = React.useState(false);
-  const [syncStatus, setSyncStatus] = React.useState<SyncSchedulerStatus>(() =>
-    getConfiguredSyncScheduler().getStatus(),
-  );
+  // One line covering ratings + schedule + todos.
+  const syncStatus = useAggregateSyncStatus();
   const [relativeTimeTick, setRelativeTimeTick] = React.useState(() => Date.now());
   const importGenerationRef = React.useRef(0);
-
-  React.useEffect(() => {
-    const scheduler = getConfiguredSyncScheduler();
-    setSyncStatus(scheduler.getStatus());
-    const unsubscribe = scheduler.onStatusChange(setSyncStatus);
-    return unsubscribe;
-  }, []);
 
   React.useEffect(() => {
     const interval = setInterval(() => {
@@ -111,9 +106,8 @@ export function LegacySettings() {
       await saveSyncToken(trimmed);
       setSyncTokenInput('');
       if (trimmed.length > 0) {
-        const scheduler = getConfiguredSyncScheduler();
-        scheduler.start();
-        await scheduler.pullNow();
+        startAllSyncSchedulers();
+        await pullAllNow();
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : '保存 token 失败，请稍后重试。';
@@ -124,9 +118,7 @@ export function LegacySettings() {
   };
 
   const handleManualSync = async () => {
-    const scheduler = getConfiguredSyncScheduler();
-    scheduler.notifyLocalChange();
-    await scheduler.pullNow();
+    await syncAllNow();
   };
   const {
     form,

@@ -34,6 +34,13 @@ export interface ScheduleEvent {
   notes?: string;
   source?: ScheduleEventSource;
   is_completed: boolean;
+  // Cloud sync fields (see docs/spec-cloud-sync.md). Optional so pre-sync
+  // records already in AsyncStorage stay valid; the storage layer lazily
+  // back-fills created_at/updated_at on load.
+  created_at?: string;
+  updated_at?: string;
+  synced_at?: string | null;
+  deleted_at?: string | null;
 }
 
 export interface SemesterConfig {

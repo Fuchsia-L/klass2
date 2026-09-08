@@ -67,6 +67,25 @@ function isScheduleEvent(value: unknown): value is ScheduleEvent {
   );
 }
 
+/**
+ * Lazily back-fills the cloud-sync timestamps on records written before the
+ * sync layer existed. `deleted_at` stays absent (read as `null` by the
+ * repository); `synced_at` is left null so the upgraded row gets pushed once.
+ * Returns the same reference when nothing changed, so callers can tell whether
+ * a write-back is needed.
+ */
+function upgradeEventRecord(event: ScheduleEvent, now: string): ScheduleEvent {
+  if (typeof event.created_at === 'string' && typeof event.updated_at === 'string') {
+    return event;
+  }
+  return {
+    ...event,
+    created_at: event.created_at ?? now,
+    updated_at: event.updated_at ?? now,
+    synced_at: event.synced_at ?? null,
+  };
+}
+
 export async function loadEventsFromStorage(): Promise<ScheduleEvent[]> {
   if (cachedEvents) return cloneEvents(cachedEvents);
 
@@ -80,7 +99,19 @@ export async function loadEventsFromStorage(): Promise<ScheduleEvent[]> {
     return valid;
   });
 
-  cachedEvents = cloneEvents(validEvents);
+  const now = new Date().toISOString();
+  let upgraded = false;
+  const events = validEvents.map((event) => {
+    const next = upgradeEventRecord(event, now);
+    if (next !== event) upgraded = true;
+    return next;
+  });
+
+  cachedEvents = cloneEvents(events);
+  if (upgraded) {
+    // Persist the back-filled timestamps so the upgrade happens once.
+    await saveJSON(STORAGE_KEYS.events, cachedEvents);
+  }
   return cloneEvents(cachedEvents);
 }
 

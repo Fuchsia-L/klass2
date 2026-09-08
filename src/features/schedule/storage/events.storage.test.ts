@@ -20,7 +20,9 @@ describe('events storage compatibility', () => {
 
     await AsyncStorage.setItem(STORAGE_KEYS.events, JSON.stringify([legacyEvent]));
 
-    await expect(loadEventsFromStorage()).resolves.toEqual([legacyEvent]);
+    await expect(loadEventsFromStorage()).resolves.toEqual([
+      expect.objectContaining(legacyEvent),
+    ]);
   });
 
   it('accepts legacy events without a repeat_until field', async () => {
@@ -36,7 +38,9 @@ describe('events storage compatibility', () => {
 
     await AsyncStorage.setItem(STORAGE_KEYS.events, JSON.stringify([legacyEvent]));
 
-    await expect(loadEventsFromStorage()).resolves.toEqual([legacyEvent]);
+    await expect(loadEventsFromStorage()).resolves.toEqual([
+      expect.objectContaining(legacyEvent),
+    ]);
   });
 
   it('accepts events with a valid repeat_until field', async () => {
@@ -53,7 +57,9 @@ describe('events storage compatibility', () => {
 
     await AsyncStorage.setItem(STORAGE_KEYS.events, JSON.stringify([repeatingEvent]));
 
-    await expect(loadEventsFromStorage()).resolves.toEqual([repeatingEvent]);
+    await expect(loadEventsFromStorage()).resolves.toEqual([
+      expect.objectContaining(repeatingEvent),
+    ]);
   });
 
   it('filters out events with invalid repeat_until values', async () => {
@@ -91,7 +97,9 @@ describe('events storage compatibility', () => {
       JSON.stringify([validEvent, ...invalidEvents]),
     );
 
-    await expect(loadEventsFromStorage()).resolves.toEqual([validEvent]);
+    await expect(loadEventsFromStorage()).resolves.toEqual([
+      expect.objectContaining(validEvent),
+    ]);
   });
 
   it('accepts events with the new source field', async () => {
@@ -108,6 +116,69 @@ describe('events storage compatibility', () => {
 
     await AsyncStorage.setItem(STORAGE_KEYS.events, JSON.stringify([importedEvent]));
 
-    await expect(loadEventsFromStorage()).resolves.toEqual([importedEvent]);
+    await expect(loadEventsFromStorage()).resolves.toEqual([
+      expect.objectContaining(importedEvent),
+    ]);
+  });
+});
+
+describe('events storage lazy sync-field upgrade', () => {
+  const ISO_MS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+  const legacyEvent = {
+    id: 'upgrade-1',
+    title: 'Pre-sync Event',
+    category: '学习',
+    start_time: '2026-03-16T08:00:00.000Z',
+    end_time: '2026-03-16T09:00:00.000Z',
+    repeat: 'none',
+    is_completed: false,
+  };
+
+  beforeEach(() => {
+    clearEventsCache();
+  });
+
+  it('back-fills created_at/updated_at with millisecond ISO timestamps', async () => {
+    await AsyncStorage.setItem(STORAGE_KEYS.events, JSON.stringify([legacyEvent]));
+
+    const [event] = await loadEventsFromStorage();
+
+    expect(event.created_at).toMatch(ISO_MS);
+    expect(event.updated_at).toMatch(ISO_MS);
+    // Not yet pushed, so it stays in the pending-sync set.
+    expect(event.synced_at).toBeNull();
+    // Missing deleted_at reads as "active".
+    expect(event.deleted_at ?? null).toBeNull();
+  });
+
+  it('writes the back-filled timestamps back so the upgrade happens once', async () => {
+    await AsyncStorage.setItem(STORAGE_KEYS.events, JSON.stringify([legacyEvent]));
+
+    const [first] = await loadEventsFromStorage();
+
+    const persisted = JSON.parse((await AsyncStorage.getItem(STORAGE_KEYS.events)) ?? '[]');
+    expect(persisted[0].created_at).toBe(first.created_at);
+    expect(persisted[0].updated_at).toBe(first.updated_at);
+
+    // A fresh load (cold cache) must reuse the stored timestamps, not re-stamp.
+    clearEventsCache();
+    const [second] = await loadEventsFromStorage();
+    expect(second.created_at).toBe(first.created_at);
+    expect(second.updated_at).toBe(first.updated_at);
+  });
+
+  it('leaves records that already carry sync fields untouched', async () => {
+    const synced = {
+      ...legacyEvent,
+      id: 'upgrade-2',
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-02T00:00:00.000Z',
+      synced_at: '2026-01-02T00:00:01.000Z',
+      deleted_at: null,
+    };
+    await AsyncStorage.setItem(STORAGE_KEYS.events, JSON.stringify([synced]));
+
+    await expect(loadEventsFromStorage()).resolves.toEqual([synced]);
   });
 });

@@ -1,11 +1,14 @@
 import { generateId } from '../../../shared/lib/id';
+import { nowIso } from '../../../shared/sync';
 import { detectConflicts } from '../domain/conflicts';
 import { validateEventTimeWindow } from '../domain/validation';
+import { localScheduleEventRepository } from '../storage/events.repository';
 import {
   clearEventsCache,
   loadEventsFromStorage,
   saveEventsToStorage,
 } from '../storage/events.storage';
+import { getScheduleSyncScheduler, getSyncingScheduleEventRepository } from '../sync';
 import { ScheduleEvent } from '../types';
 
 type EventMutationResult = {
@@ -27,8 +30,9 @@ async function persist(events: ScheduleEvent[]) {
   notify();
 }
 
+/** Active events only — soft-deleted rows are filtered out by the repository. */
 export async function loadEvents(): Promise<ScheduleEvent[]> {
-  return loadEventsFromStorage();
+  return localScheduleEventRepository.list();
 }
 
 export async function replaceImportedEvents(importedEvents: ScheduleEvent[]): Promise<void> {
@@ -42,10 +46,27 @@ export async function replaceImportedEvents(importedEvents: ScheduleEvent[]): Pr
     }
   });
 
-  const existingEvents = await loadEvents();
-  const preservedEvents = existingEvents.filter((event) => event.source !== 'whut-import');
+  const now = nowIso();
+  // listAll so existing tombstones survive the rewrite instead of being
+  // physically dropped (they still owe the server a push).
+  const existingEvents = await localScheduleEventRepository.listAll();
+  const preservedEvents = existingEvents.map((event) => {
+    if (event.source !== 'whut-import' || event.deleted_at != null) return event;
+    // Replaced imports become tombstones so the server drops them too.
+    return { ...event, updated_at: now, deleted_at: now, synced_at: null };
+  });
 
-  await persist([...preservedEvents, ...importedEvents]);
+  const stampedImports = importedEvents.map((event) => ({
+    ...event,
+    created_at: event.created_at ?? now,
+    updated_at: now,
+    synced_at: null,
+    deleted_at: null,
+  }));
+
+  // Bulk write goes straight to storage, so nudge the scheduler by hand.
+  await persist([...preservedEvents, ...stampedImports]);
+  getScheduleSyncScheduler().notifyLocalChange();
 }
 
 export function subscribeToEvents(listener: () => void): () => void {
@@ -61,11 +82,16 @@ export async function addEvent(event: EventInput): Promise<EventMutationResult> 
     };
   }
 
+  const now = nowIso();
   const nextEvent: ScheduleEvent = {
     ...event,
     id: generateId(),
     source: event.source ?? 'manual',
     is_completed: false,
+    created_at: now,
+    updated_at: now,
+    synced_at: null,
+    deleted_at: null,
   };
 
   const events = await loadEvents();
@@ -74,7 +100,8 @@ export async function addEvent(event: EventInput): Promise<EventMutationResult> 
     return { success: false, conflicts, error: '与已有事件时间冲突' };
   }
 
-  await persist([...events, nextEvent]);
+  await getSyncingScheduleEventRepository().save(nextEvent);
+  notify();
   return { success: true };
 }
 
@@ -92,22 +119,37 @@ export async function updateEvent(event: ScheduleEvent): Promise<EventMutationRe
     return { success: false, conflicts, error: '与已有事件时间冲突' };
   }
 
-  await persist(events.map((current) => (current.id === event.id ? event : current)));
+  const existing = events.find((current) => current.id === event.id);
+  await getSyncingScheduleEventRepository().save({
+    ...event,
+    created_at: event.created_at ?? existing?.created_at ?? nowIso(),
+    updated_at: nowIso(),
+    // A local edit must be re-pushed, so drop the synced marker.
+    synced_at: null,
+    deleted_at: null,
+  });
+  notify();
   return { success: true };
 }
 
+/** Soft delete: writes a tombstone so the deletion propagates to the server. */
 export async function deleteEvent(id: string): Promise<void> {
-  const events = await loadEvents();
-  await persist(events.filter((event) => event.id !== id));
+  await getSyncingScheduleEventRepository().remove(id);
+  notify();
 }
 
 export async function toggleComplete(id: string): Promise<void> {
   const events = await loadEvents();
-  await persist(
-    events.map((event) =>
-      event.id === id ? { ...event, is_completed: !event.is_completed } : event,
-    ),
-  );
+  const event = events.find((candidate) => candidate.id === id);
+  if (!event) return;
+
+  await getSyncingScheduleEventRepository().save({
+    ...event,
+    is_completed: !event.is_completed,
+    updated_at: nowIso(),
+    synced_at: null,
+  });
+  notify();
 }
 
 export function resetEventsState(): void {
