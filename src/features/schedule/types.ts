@@ -17,7 +17,10 @@ export const CATEGORIES: Record<CategoryKey, CategoryInfo> = {
 
 export type RepeatType = 'none' | 'daily' | 'weekly';
 
-export const SCHEDULE_EVENT_SOURCES = ['manual', 'whut-import'] as const;
+// 'claude' 是 v3 起 VPS 侧 Claude 通过 ratings-api 写端点创建的事件来源。
+// 服务端第一期已放行该值（设计 §8.5 裁决 5），app 端在此对齐，
+// 免得同步拉回来的 claude 事件在校验/显示层被当成未知来源。
+export const SCHEDULE_EVENT_SOURCES = ['manual', 'whut-import', 'claude'] as const;
 
 export type ScheduleEventSource = (typeof SCHEDULE_EVENT_SOURCES)[number];
 

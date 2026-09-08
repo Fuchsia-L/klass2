@@ -120,6 +120,27 @@ describe('events storage compatibility', () => {
       expect.objectContaining(importedEvent),
     ]);
   });
+
+  it("accepts events created by Claude (source: 'claude')", async () => {
+    // v3: VPS 侧 Claude 通过 ratings-api 写端点建的课，同步拉回来时 source 是 'claude'。
+    // 这个值不在白名单里的话会被 loadEventsFromStorage 当脏数据整条丢掉。
+    const claudeEvent = {
+      id: 'claude-1',
+      title: '临时加的课',
+      category: '学习',
+      start_time: '2026-03-16T10:00:00.000Z',
+      end_time: '2026-03-16T11:00:00.000Z',
+      repeat: 'none',
+      source: 'claude',
+      is_completed: false,
+    };
+
+    await AsyncStorage.setItem(STORAGE_KEYS.events, JSON.stringify([claudeEvent]));
+
+    await expect(loadEventsFromStorage()).resolves.toEqual([
+      expect.objectContaining(claudeEvent),
+    ]);
+  });
 });
 
 describe('events storage lazy sync-field upgrade', () => {
