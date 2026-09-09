@@ -10,7 +10,7 @@ import {
 let cachedEvents: ScheduleEvent[] | null = null;
 
 function cloneEvents(events: ScheduleEvent[]): ScheduleEvent[] {
-  return events.map((event) => ({ ...event }));
+  return events.map((event) => ({ ...normalizeEventRecord(event) }));
 }
 
 function isValidRepeatType(value: unknown): value is RepeatType {
@@ -36,19 +36,56 @@ function isValidIsoDateString(value: unknown): value is string {
   return !Number.isNaN(parsedDate.getTime()) && parsedDate.toISOString().slice(0, 10) === value;
 }
 
+/**
+ * The optional fields the server materialises as explicit `null` on every row
+ * it returns (`POST /v1/schedule` fills the omitted ones with SQL NULL). They
+ * are normalised to `undefined` before anything is persisted, so local storage
+ * only ever holds one shape; the validators below still accept `null` as a
+ * second line of defence for rows written by an older build.
+ */
+const NULLABLE_EVENT_FIELDS = [
+  'repeat_until',
+  'location',
+  'reminder_minutes',
+  'notes',
+  'source',
+] as const;
+
+/**
+ * Strips the server's explicit `null`s off the nullable optional fields.
+ * Returns the same reference when there is nothing to strip, so callers can
+ * cheaply tell whether a write-back is warranted.
+ *
+ * `synced_at` / `deleted_at` are deliberately excluded: `null` is their
+ * meaningful "not synced" / "not deleted" value, not an absent field.
+ */
+export function normalizeEventRecord(event: ScheduleEvent): ScheduleEvent {
+  let changed = false;
+  const next = { ...event } as ScheduleEvent & Record<string, unknown>;
+  for (const field of NULLABLE_EVENT_FIELDS) {
+    // Cast: the field is typed `T | undefined`, but a row straight off the wire
+    // can carry an explicit null that the type does not admit.
+    if ((next[field] as unknown) === null) {
+      delete next[field];
+      changed = true;
+    }
+  }
+  return changed ? next : event;
+}
+
 function isValidReminder(value: unknown): value is ScheduleEvent['reminder_minutes'] {
-  return value === undefined || value === 5 || value === 15 || value === 30;
+  return value == null || value === 5 || value === 15 || value === 30;
 }
 
 function isValidSource(value: unknown): value is ScheduleEvent['source'] {
   return (
-    value === undefined ||
+    value == null ||
     SCHEDULE_EVENT_SOURCES.includes(value as (typeof SCHEDULE_EVENT_SOURCES)[number])
   );
 }
 
 function isValidRepeatUntil(value: unknown): value is ScheduleEvent['repeat_until'] {
-  return value === undefined || isValidIsoDateString(value);
+  return value == null || isValidIsoDateString(value);
 }
 
 function isScheduleEvent(value: unknown): value is ScheduleEvent {
@@ -102,8 +139,12 @@ export async function loadEventsFromStorage(): Promise<ScheduleEvent[]> {
   const now = new Date().toISOString();
   let upgraded = false;
   const events = validEvents.map((event) => {
-    const next = upgradeEventRecord(event, now);
-    if (next !== event) upgraded = true;
+    // Rows written by a build that predates the normalization may still carry
+    // the server's explicit nulls; flatten them on the way in too.
+    const stripped = normalizeEventRecord(event);
+    if (stripped !== event) upgraded = true;
+    const next = upgradeEventRecord(stripped, now);
+    if (next !== stripped) upgraded = true;
     return next;
   });
 

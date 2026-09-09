@@ -43,6 +43,19 @@ export async function loadTodos(): Promise<TodoItem[]> {
   return all.filter((todo) => todo.deleted_at == null);
 }
 
+/**
+ * Bridges repository-level writes into this module's listener set.
+ *
+ * Writes that bypass the service — most importantly the sync scheduler's
+ * `mergeRemoteRecords`, which calls `localTodoRepository.save()` directly —
+ * only ever notified the repository's own listeners, which nobody subscribed
+ * to. Hooks subscribe here, so merged remote rows sat on disk until the next
+ * app launch. Attached once, for the lifetime of the module.
+ */
+localTodoRepository.subscribe(() => {
+  notify();
+});
+
 export function subscribeToTodos(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);

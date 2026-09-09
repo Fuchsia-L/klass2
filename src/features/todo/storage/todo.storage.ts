@@ -4,7 +4,35 @@ import { TodoItem, TodoType, Priority, PRIORITY_ORDER } from '../types';
 let cachedTodos: TodoItem[] | null = null;
 
 function cloneTodos(todos: TodoItem[]): TodoItem[] {
-  return todos.map((t) => ({ ...t }));
+  return todos.map((t) => ({ ...normalizeTodoRecord(t) }));
+}
+
+/**
+ * The optional fields the server materialises as explicit `null` on every row
+ * it returns. Normalised to `undefined` before anything is persisted so local
+ * storage only ever holds one shape.
+ *
+ * `synced_at` / `deleted_at` are deliberately excluded: `null` is their
+ * meaningful "not synced" / "not deleted" value, not an absent field.
+ */
+const NULLABLE_TODO_FIELDS = ['notes'] as const;
+
+/**
+ * Strips the server's explicit `null`s off the nullable optional fields.
+ * Returns the same reference when there is nothing to strip.
+ */
+export function normalizeTodoRecord(todo: TodoItem): TodoItem {
+  let changed = false;
+  const next = { ...todo } as TodoItem & Record<string, unknown>;
+  for (const field of NULLABLE_TODO_FIELDS) {
+    // Cast: the field is typed `string | undefined`, but a row straight off the
+    // wire can carry an explicit null that the type does not admit.
+    if ((next[field] as unknown) === null) {
+      delete next[field];
+      changed = true;
+    }
+  }
+  return changed ? next : todo;
 }
 
 function isValidTodoType(v: unknown): v is TodoType {
@@ -26,7 +54,10 @@ function isTodoItem(v: unknown): v is TodoItem {
     typeof t.is_completed === 'boolean' &&
     typeof t.last_reset === 'string' &&
     typeof t.created_at === 'string' &&
-    (t.notes === undefined || typeof t.notes === 'string')
+    // `null` is accepted as a second line of defence: the server returns an
+    // explicit null for an unset `notes`, and rows written by a build that
+    // predates the normalization may still carry it on disk.
+    (t.notes == null || typeof t.notes === 'string')
   );
 }
 
@@ -60,8 +91,12 @@ export async function loadTodosFromStorage(): Promise<TodoItem[]> {
   const now = new Date().toISOString();
   let upgraded = false;
   const todos = valid.map((todo) => {
-    const next = upgradeTodoRecord(todo, now);
-    if (next !== todo) upgraded = true;
+    // Rows written by a build that predates the normalization may still carry
+    // the server's explicit nulls; flatten them on the way in too.
+    const stripped = normalizeTodoRecord(todo);
+    if (stripped !== todo) upgraded = true;
+    const next = upgradeTodoRecord(stripped, now);
+    if (next !== stripped) upgraded = true;
     return next;
   });
 
