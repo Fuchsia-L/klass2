@@ -235,7 +235,7 @@ Production keystore is now in use:
 
 - File: `android/app/klass-release.keystore`
 - Alias: `klass`
-- Password: `cuvF3OyoReiXlux`
+- Signing passwords are stored only in local secure configuration; never record them in this document.
 - CN=Fuchsia L, L=Wuhan
 - SHA-256: `da4317c7ce8320971df386171d62cf9f6b3be553ba4734a68862198ea4b7a8b0`
 

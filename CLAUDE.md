@@ -1,5 +1,7 @@
 # CyberSchedule RN — Project Conventions
 
+Start from the shared `main` baseline. Read [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md) for task branches, collection and release rules.
+
 React Native + Expo app（Android primary）for 课表 + 时段打分，含云同步。TypeScript。
 
 ## Stack & layout
